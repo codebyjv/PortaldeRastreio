@@ -8,6 +8,7 @@ import { Textarea } from './ui/textarea'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Alert, AlertDescription } from './ui/alert'
+import { supabase } from '../lib/supabase' // Ajuste o caminho conforme necessário
 
 interface FeedbackFormProps {
   orderNumber: string
@@ -20,22 +21,52 @@ export function FeedbackForm({ orderNumber }: FeedbackFormProps) {
   const [email, setEmail] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     
     if (rating === 0) {
-      alert('Por favor, selecione uma avaliação')
+      setError('Por favor, selecione uma avaliação')
+      return
+    }
+
+    if (email && !validateEmail(email)) {
+      setError('Por favor, insira um email válido')
       return
     }
 
     setIsSubmitting(true)
-    
-    // Simular envio do feedback
-    setTimeout(() => {
+
+    try {
+      const { error: submitError } = await supabase
+        .from('feedbacks')
+        .insert({
+          order_number: orderNumber,
+          rating: rating,
+          feedback: feedback || null,
+          email: email || null
+        })
+        .select()
+
+      if (submitError) {
+        throw submitError
+      }
+
       setIsSubmitted(true)
+      
+    } catch (err) {
+      console.error('Erro ao enviar feedback:', err)
+      setError('Erro ao enviar feedback. Tente novamente.')
+    } finally {
       setIsSubmitting(false)
-    }, 1500)
+    }
+  }
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
   }
 
   if (isSubmitted) {
@@ -66,6 +97,12 @@ export function FeedbackForm({ orderNumber }: FeedbackFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Rating Stars */}
           <div>
@@ -108,10 +145,17 @@ export function FeedbackForm({ orderNumber }: FeedbackFormProps) {
               id="feedback"
               placeholder="Compartilhe sua experiência, sugestões ou comentários sobre o pedido..."
               value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 500) {
+                  setFeedback(e.target.value)
+                }
+              }}
               rows={4}
               className="mt-2"
             />
+            <p className="text-sm text-gray-500 mt-1">
+              {feedback.length}/500 caracteres
+            </p>
           </div>
 
           {/* Email */}
