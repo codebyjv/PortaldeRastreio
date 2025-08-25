@@ -1,4 +1,3 @@
-// components/AdminDashboard.tsx
 import { useState, useEffect } from 'react';
 import { Search, Plus, X, Bell, BellOff, Upload } from 'lucide-react';
 import { Button } from './ui/button';
@@ -6,15 +5,13 @@ import { Input } from './ui/input';
 import { OrderForm } from './OrderForm';
 import { OrderList } from './OrderList';
 import { OrderDetails } from './OrderDetails';
+import { ExcelImporter } from './ExcelImporter';
 import { SupabaseService } from '../services/supabaseService';
 import { supabase } from '../lib/supabase';
 import { Order } from '../types/order';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
-
 import { useNotifications } from '../hooks/useNotifications';
-
-import { ExcelImporter } from './ExcelImporter';
 import { Layout } from './Layout';
 
 export const AdminDashboard = () => {
@@ -31,9 +28,6 @@ export const AdminDashboard = () => {
   // Hook de notificações
   const {
     enabled: notificationsEnabled,
-    // requestPermission,
-    showNotification,
-    showOrderNotification,
     toggleNotifications
   } = useNotifications();
 
@@ -44,7 +38,7 @@ export const AdminDashboard = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === 'SIGNED_OUT') {
-          navigate('/'); 
+          navigate('/');
         }
         setUser(session?.user || null);
         setLoading(false);
@@ -52,7 +46,7 @@ export const AdminDashboard = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]); 
+  }, [navigate]);
 
   useEffect(() => {
     loadOrders();
@@ -79,30 +73,23 @@ export const AdminDashboard = () => {
       const ordersData = await SupabaseService.getOrders();
       setOrders(ordersData);
       setFilteredOrders(ordersData);
-
-      // Atualizar o pedido selecionado se ainda existir
-    if (selectedOrder) {
-      const updatedOrder = ordersData.find(o => o.id === selectedOrder.id);
-      if (updatedOrder) {
-        setSelectedOrder(updatedOrder);
-      } else {
+      
+      // Se o pedido selecionado foi excluído, limpe a seleção
+      if (selectedOrder && !ordersData.find(o => o.id === selectedOrder.id)) {
         setSelectedOrder(null);
       }
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Erro ao carregar pedidos:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleCreateOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'expirationDate'>) => {
     try {
       await SupabaseService.createOrder(orderData);
       await loadOrders();
       setShowForm(false);
-
-      // Notificação já será mostrada pelo OrderForm
       alert('Pedido criado com sucesso!');
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
@@ -124,12 +111,19 @@ export const AdminDashboard = () => {
     setLoading(false);
     
     if (!session) {
-      navigate('/'); 
+      navigate('/');
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  const handleToggleNotifications = async () => {
+    const success = await toggleNotifications();
+    if (success) {
+      alert('Notificações ativadas com sucesso!');
+    }
   };
 
   if (loading) {
@@ -155,75 +149,8 @@ export const AdminDashboard = () => {
     );
   }
 
-  const handleOrderChange = (payload: any) => {
-    const eventType = payload.eventType;
-    const newData = payload.new;
-    const oldData = payload.old;
-
-    // Recarregar a lista de pedidos
-    loadOrders();
-
-    // Mostrar notificações baseadas no tipo de evento
-    if (notificationsEnabled) {
-      switch (eventType) {
-        case 'INSERT':
-          showNotification('Novo Pedido Criado', {
-            body: `Pedido ${newData.order_number} foi criado para ${newData.customer_name}`,
-            tag: `order-${newData.id}`
-          });
-          break;
-        case 'UPDATE':
-          // Notificar apenas se o status mudou
-          if (oldData.status !== newData.status) {
-            showNotification('Status Atualizado', {
-              body: `Pedido ${newData.order_number} mudou para ${newData.status}`,
-              tag: `order-${newData.id}`
-            });
-          }
-          break;
-        default:
-          break;
-      }
-    }
-  };
-
-  const handleNewDocument = (payload: any) => {
-    const newDocument = payload.new;
-    
-    if (notificationsEnabled) {
-      // Se precisarmos buscar informações do pedido relacionado
-      const relatedOrder = orders.find(order => order.id === newDocument.order_id);
-      if (relatedOrder) {
-        showNotification('Novo Documento', {
-          body: `Pedido ${relatedOrder.order_number} recebeu um novo documento: ${newDocument.name || newDocument.type}`,
-          tag: `order-${relatedOrder.id}-document`
-        });
-      } else {
-        showNotification('Novo Documento Adicionado', {
-          body: `Um novo documento foi adicionado ao pedido ${newDocument.order_id}`,
-          tag: `document-${newDocument.id}`
-        });
-      }
-    }
-  };
-
-  const handleToggleNotifications = async () => {
-    const success = await toggleNotifications();
-    if (success) {
-      showOrderNotification(
-        'Sistema',
-        'Painel Administrativo',
-        'system',
-        {
-          body: 'Notificações ativadas com sucesso!',
-          type: 'system'
-        }
-      );
-    }
-  };
-
   return (
-      <Layout>
+    <Layout>
       <div className="p-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -261,7 +188,7 @@ export const AdminDashboard = () => {
                 <ExcelImporter 
                   onImportComplete={() => {
                     setShowImporter(false);
-                    loadOrders(); // Recarregar a lista de pedidos
+                    loadOrders();
                   }}
                   onCancel={() => setShowImporter(false)}
                 />

@@ -94,31 +94,16 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
     }
   };
 
-  const handleSaveEdit = (updatedOrder: Order) => {
+  const handleSaveEdit = () => {
     onUpdate(); // Recarregar os dados
     setEditing(false); // Fechar o form de edição
   };
 
-  const handleDeleteOrder = async () => {
-    if (order.id) {
-      try {
-        await SupabaseService.deleteOrder(order.id);
-        onUpdate();
-        setShowUpload(false); // Fechar o upload de documentos
-        setDocuments([]); // Limpar documentos
-        setEditing(false); // Fechar o form de edição
-        alert('Pedido excluído com sucesso!');
-      } catch (error) {
-        console.error('Erro ao excluir pedido:', error);
-        alert('Erro ao excluir pedido');
-      }
-    }
-  };
-
-  const handleUpdateOrder = (updatedData: Partial<Order>) => {
-    setLocalOrder({ ...localOrder, ...updatedData });
-    onUpdate(); // Chama a função para atualizar a lista principal
-  };
+  // TODO: Implementar atualização em tempo real do pedido
+  // const handleUpdateOrder = (updatedData: Partial<Order>) => {
+  //   setLocalOrder({ ...localOrder, ...updatedData });
+  //   onUpdate();
+  // };
 
   const handleDeleteClick = () => {
     setIsDeleteModalOpen(true);
@@ -336,7 +321,7 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
     {/* Modal de confirmação */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         title="Confirmar Exclusão"
         message={`Tem certeza que deseja excluir o pedido ${localOrder.order_number}? Esta ação não pode ser desfeita.`}
