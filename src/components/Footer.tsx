@@ -60,7 +60,7 @@ export const Footer: React.FC = () => {
         {/* Divisor e informações adicionais */}
         <div className="border-t border-gray-700 mt-8 pt-6 text-center">
           <p className="text-sm text-gray-400">
-            Marca Registrada ® - Os dados são de propriedade de Sua Empresa Ltda
+            Marca Registrada ® - Os dados são de propriedade da WL Pesos Padrão LTDA.
           </p>
         </div>
       </div>

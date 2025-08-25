@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { OrderDocument } from '../types/order';
 import { SupabaseService } from '../services/supabaseService';
+import { useIsAdminRoute } from '../hooks/useIsAdminRoute';
 import { useState, useEffect } from 'react';
 import { useNotifications } from '../hooks/useNotifications';
 import { FileUpload } from './FileUpload';
@@ -33,6 +34,8 @@ export function DocumentsSection({ orderId, orderNumber, customerName }: Documen
   const { showOrderNotification, enabled } = useNotifications();
   const [documents, setDocuments] = useState<OrderDocument[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdminRoute = useIsAdminRoute();
 
   const allDocuments = [DEFAULT_MANUAL, ...documents];
 
@@ -173,11 +176,14 @@ export function DocumentsSection({ orderId, orderNumber, customerName }: Documen
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <FileUpload 
-          orderId={orderId} 
-          onUploadComplete={handleUploadComplete}
-        />
-        
+        {/* Mostra o FileUpload APENAS na rota /admin */}
+        {isAdminRoute && (
+          <FileUpload
+            orderId={orderId}
+            onUploadComplete={handleUploadComplete}
+          />
+        )}
+
         <div className="space-y-4 mt-4">
           {allDocuments.map((doc) => (
             <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
