@@ -1,6 +1,6 @@
 // components/ExcelImporter.tsx
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, X, CheckCircle, AlertCircle, Download } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { SupabaseService } from '../services/supabaseService';

@@ -1,4 +1,4 @@
-import React from 'react'
+// import React from 'react'
 import { CheckCircle, Clock, Truck, Package } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
