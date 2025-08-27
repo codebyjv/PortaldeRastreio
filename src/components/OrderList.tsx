@@ -21,7 +21,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, sel
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 h-248 overflow-y-auto">
       <h3 className="font-semibold text-lg p-4">Pedidos Cadastrados</h3>
       {orders.map((order) => (
         <div

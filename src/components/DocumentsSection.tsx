@@ -1,4 +1,4 @@
-import { FileText, Download, File, CreditCard, Truck, BookOpen } from 'lucide-react';
+import { FileText, Download, File, CreditCard, Truck, BookOpen, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -13,6 +13,8 @@ interface DocumentsSectionProps {
   orderId: string;
   orderNumber: string;
   customerName: string;
+  onDocumentChange?: () => void; // Callback para notificar mudanças nos documentos
+  onDeleteDocument?: (documentId: string) => void;
 }
 
 const DEFAULT_MANUAL = {
@@ -30,7 +32,7 @@ const DEFAULT_MANUAL = {
   expires_at: new Date().toISOString(),
 };
 
-export function DocumentsSection({ orderId, orderNumber, customerName }: DocumentsSectionProps) {
+export function DocumentsSection({ orderId, orderNumber, customerName, onDeleteDocument }: DocumentsSectionProps) {
   const { showOrderNotification, enabled } = useNotifications();
   const [documents, setDocuments] = useState<OrderDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,11 +189,24 @@ export function DocumentsSection({ orderId, orderNumber, customerName }: Documen
         <div className="space-y-4 mt-4">
           {allDocuments.map((doc) => (
             <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 flex-grow">
                 {getDocumentIcon(doc.original_name)}
-                <div>
-                  <h4 className="font-medium text-gray-900">{doc.original_name}</h4>
-                  <div className="flex items-center space-x-2 mt-1">
+                <div className="flex-grow">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">{doc.original_name}</h4>
+                    {onDeleteDocument && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteDocument(doc.id)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        title="Excluir documento"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
                     {getDocumentTypeBadge(doc.original_name)}
                     <Badge variant="outline" className="text-xs">
                       {getFileTypeFromExtension(doc.original_name)}
@@ -201,7 +216,6 @@ export function DocumentsSection({ orderId, orderNumber, customerName }: Documen
                     <span className="text-sm text-gray-500">
                       {new Date(doc.uploaded_at).toLocaleDateString('pt-BR')}
                     </span>
-                    {/* Indicador para documentos padrão */}
                     {doc.is_default && (
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-0">
                         Padrão
@@ -214,7 +228,7 @@ export function DocumentsSection({ orderId, orderNumber, customerName }: Documen
                 variant="outline"
                 size="sm"
                 onClick={() => handleDownload(doc)}
-                className="flex items-center"
+                className="flex items-center ml-4"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download

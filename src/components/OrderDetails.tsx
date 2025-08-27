@@ -30,13 +30,14 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
   const [editing, setEditing] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [refreshDocuments, setRefreshDocuments] = useState(0);
 
   // Atualizar o estado local quando a prop 'order' mudar
   useEffect(() => {
     setLocalOrder(order);
   }, [order]);
 
-  // Carregar documentos do pedido
+  // useEffect para carregar documentos dependendo de refreshDocuments
   useEffect(() => {
     const loadDocuments = async () => {
       if (order.id) {
@@ -50,9 +51,31 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
         }
       }
     };
-
     loadDocuments();
-  }, [order.id]);
+  }, [order.id, refreshDocuments]);
+
+  // Função para forçar recarga de documentos
+  const triggerDocumentRefresh = () => {
+    setRefreshDocuments(prev => prev + 1);
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este documento?')) {
+      return;
+    }
+
+    try {
+      await SupabaseService.deleteDocument(documentId);
+      alert('Documento excluído com sucesso!');
+      
+      // Atualizar a lista de documentos
+      triggerDocumentRefresh(); // Usando o estado de refresh que já existe
+      onUpdate(); // Ou recarregar os dados do pedido, se necessário
+    } catch (error) {
+      console.error('Erro ao excluir documento:', error);
+      alert('Erro ao excluir documento. Verifique o console para mais detalhes.');
+    }
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -98,12 +121,6 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
     onUpdate(); // Recarregar os dados
     setEditing(false); // Fechar o form de edição
   };
-
-  // TODO: Implementar atualização em tempo real do pedido
-  // const handleUpdateOrder = (updatedData: Partial<Order>) => {
-  //   setLocalOrder({ ...localOrder, ...updatedData });
-  //   onUpdate();
-  // };
 
   const handleDeleteClick = () => {
     setIsDeleteModalOpen(true);
@@ -289,6 +306,7 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
               onUploadComplete={() => {
                 setShowUpload(false);
                 onUpdate();
+                triggerDocumentRefresh();
               }}
             />
           </div>
@@ -305,6 +323,8 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
             orderId={order.id}
             orderNumber={order.order_number}
             customerName={order.customer_name}
+            onDocumentChange={triggerDocumentRefresh}
+            onDeleteDocument={handleDeleteDocument}
           />
         ) : (
           <div className="text-center py-8 text-gray-500">
