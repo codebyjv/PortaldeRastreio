@@ -2,13 +2,30 @@
 import { supabase } from '../lib/supabase'
 import { Order, OrderDocument } from '../types/order'
 
+// Helper interno para registrar ações. Não é exportado.
+const _logAction = async (action: string, orderId: string | null, details?: object) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    // Não registra a ação se não for um usuário logado (ex: ações automáticas do sistema)
+    if (!user) return;
+
+    await supabase.from('action_logs').insert({
+      user_email: user.email,
+      action: action,
+      order_id: orderId,
+      details: details || null,
+    });
+  } catch (error) {
+    console.error('Falha ao registrar ação no log:', error);
+  }
+};
+
 export const SupabaseService = {
   // ===== CRUD DE PEDIDOS =====
   async createOrder(orderData: Omit<Order, 'id' | 'created_at' | 'expiration_date'>): Promise<Order> {
     const { data, error } = await supabase
         .from('orders')
         .insert([{
-        // Converta camelCase para snake_case
         order_number: orderData.order_number,
         customer_name: orderData.customer_name,
         order_date: orderData.order_date,
@@ -17,12 +34,14 @@ export const SupabaseService = {
         total_value: orderData.total_value,
         expected_delivery: orderData.expected_delivery,
         created_at: new Date().toISOString(),
-        expiration_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString()
+        expiration_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         }])
         .select()
         .single()
 
     if (error) throw new Error(`Erro ao criar pedido: ${error.message}`)
+    
+    await _logAction(`Pedido #${data.order_number} criado.`, data.id);
     return data
   },
 
@@ -48,6 +67,19 @@ export const SupabaseService = {
     return data || []
   },
 
+  async getOrderNumbers(): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('order_number');
+
+    if (error) {
+      console.error('Erro ao buscar números de pedido:', error);
+      return new Set();
+    }
+
+    return new Set(data.map(item => item.order_number));
+  },
+
   async updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
     const { error } = await supabase
       .from('orders')
@@ -55,6 +87,7 @@ export const SupabaseService = {
       .eq('id', orderId)
 
     if (error) throw new Error(`Erro ao atualizar status: ${error.message}`)
+    await _logAction(`Status do pedido alterado para '${newStatus}'.`, orderId);
   },
 
   async updateOrder(orderId: string, updates: Partial<Order>): Promise<Order> {
@@ -64,127 +97,113 @@ export const SupabaseService = {
         .eq('id', orderId)
         .select();
 
-    if (error) {
-      throw error;
-    }
+    if (error) { throw error; }
 
+    await _logAction(`Detalhes do pedido atualizados.`, orderId, { updatedFields: Object.keys(updates) });
     return data[0];
   },
 
   async deleteOrder(orderId: string): Promise<void> {
+    // Precisamos do número do pedido para o log antes de deletar
+    const { data: orderData } = await supabase.from('orders').select('order_number').eq('id', orderId).single();
+    const orderNumber = orderData ? orderData.order_number : 'desconhecido';
+
     const { error } = await supabase
       .from('orders')
       .delete()
       .eq('id', orderId)
 
     if (error) throw new Error(`Erro ao deletar pedido: ${error.message}`)
+    await _logAction(`Pedido #${orderNumber} excluído.`, orderId);
   },
 
   // ===== UPLOAD DE ARQUIVOS =====
-  async uploadFile(file: File, orderId: string): Promise<OrderDocument> {
-    try {
-      // 1. Upload para Storage
-      const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('documents')
-        .upload(fileName, file)
+  async uploadFile(file: File, orderId: string, category: string): Promise<OrderDocument> {
+    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage.from('documents').upload(fileName, file);
+    if (uploadError) throw uploadError;
 
-      if (uploadError) throw uploadError
+    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(fileName);
 
-      // 2. Obter URL pública
-      const { data: urlData } = supabase
-        .storage
-        .from('documents')
-        .getPublicUrl(fileName)
+    const { data: dbData, error: dbError } = await supabase
+      .from('documents')
+      .insert([{
+        order_id: orderId,
+        file_name: fileName,
+        original_name: file.name,
+        mime_type: file.type,
+        size: file.size,
+        storage_path: uploadData.path,
+        download_url: urlData.publicUrl,
+        uploaded_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        category: category
+      }])
+      .select()
+      .single();
 
-      // 3. Salvar metadados no banco
-      const { data: dbData, error: dbError } = await supabase
-        .from('documents')
-        .insert([{
-          order_id: orderId,
-          file_name: fileName,
-          original_name: file.name,
-          mime_type: file.type,
-          size: file.size,
-          storage_path: uploadData.path,
-          download_url: urlData.publicUrl,
-          uploaded_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString()
-        }])
-        .select()
-        .single()
+    if (dbError) throw dbError;
 
-      if (dbError) throw dbError
-      return dbData
-
-    } catch (error) {
-      console.error('Erro no upload:', error)
-      if (error instanceof Error) {
-        throw new Error(`Falha no upload do arquivo: ${error.message}`)
-      } else {
-        throw new Error('Falha no upload do arquivo: erro desconhecido')
-      }
-    }
+    await _logAction(`Documento '${file.name}' (${category}) carregado.`, orderId);
+    return dbData;
   },
 
   // ===== DOWNLOAD DE ARQUIVOS =====
-  async getOrderDocuments(orderId: string): Promise<OrderDocument[]> {
-    const { data, error } = await supabase
+  async getOrderDocuments(orderId: string, includeArchived = false): Promise<OrderDocument[]> {
+    let query = supabase
       .from('documents')
       .select('*')
-      .eq('order_id', orderId)
-      .order('uploaded_at', { ascending: false })
+      .eq('order_id', orderId);
+
+    if (!includeArchived) {
+      query = query.eq('is_archived', false);
+    }
+
+    const { data, error } = await query.order('uploaded_at', { ascending: false });
 
     if (error) throw new Error(`Erro ao buscar documentos: ${error.message}`)
     return data || []
   },
 
   async deleteDocument(documentId: string): Promise<void> {
-    // Primeiro busca o documento para pegar o caminho do arquivo
     const { data: document, error: fetchError } = await supabase
       .from('documents')
-      .select('storage_path')
+      .select('storage_path, original_name, order_id')
       .eq('id', documentId)
-      .single()
+      .single();
 
-    if (fetchError) throw fetchError
+    if (fetchError) throw new Error(`Documento para deletar não encontrado: ${fetchError.message}`);
 
-    // Deleta do Storage
-    const { error: storageError } = await supabase
-      .storage
-      .from('documents')
-      .remove([document.storage_path])
+    const { error: storageError } = await supabase.storage.from('documents').remove([document.storage_path]);
+    if (storageError) throw storageError;
 
-    if (storageError) throw storageError
+    const { error: dbError } = await supabase.from('documents').delete().eq('id', documentId);
+    if (dbError) throw dbError;
 
-    // Deleta do banco
-    const { error: dbError } = await supabase
-      .from('documents')
-      .delete()
-      .eq('id', documentId)
-
-    if (dbError) throw dbError
+    await _logAction(`Documento '${document.original_name}' excluído.`, document.order_id);
   },
 
-  // ===== LIMPEZA AUTOMÁTICA =====
-  async cleanupExpiredData(): Promise<void> {
-    const now = new Date().toISOString()
-    
-    // Deleta documentos expirados
-    const { error: docsError } = await supabase
-      .from('documents')
-      .delete()
-      .lt('expires_at', now)
+  // ===== DASHBOARD & LOGS =====
+  async getDashboardMetrics(): Promise<any> {
+    const { data, error } = await supabase.rpc('get_dashboard_metrics');
+    if (error) {
+      console.error('Erro ao buscar métricas do dashboard:', error);
+      throw error;
+    }
+    return data;
+  },
 
-    if (docsError) console.error('Erro ao limpar documentos:', docsError)
+  async getActionLogs(orderId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('action_logs')
+      .select('*')
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: false });
 
-    // Deleta pedidos expirados
-    const { error: ordersError } = await supabase
-      .from('orders')
-      .delete()
-      .lt('expiration_date', now)
-
-    if (ordersError) console.error('Erro ao limpar pedidos:', ordersError)
+    if (error) {
+      console.error('Erro ao buscar logs de ação:', error);
+      return [];
+    }
+    return data;
   }
-}
+};

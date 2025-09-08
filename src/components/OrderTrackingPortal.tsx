@@ -10,10 +10,12 @@ import { DocumentsSection } from './DocumentsSection'
 import { FeedbackForm } from './FeedbackForm'
 import { AvailabilityInfo } from './AvailabilityInfo'
 import { SupabaseService } from '../services/supabaseService'
-import { Order } from '../types/order'
+import { Order } from '../types/order';
 import { OrderMapperService } from '../services/orderMapperService'
 import { LoginModal } from './LoginModal'
 import { Layout } from './Layout';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { faqs } from '../../pages/faq';
 
 export function OrderTrackingPortal() {
    const navigate = useNavigate();

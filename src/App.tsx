@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { OrderTrackingPortal } from './components/OrderTrackingPortal';
-import AdminPage from '../pages/admin'; // ← Importe a página admin
+import AdminPage from '../pages/admin'; 
+import { FAQPage } from '../pages/faq';
 
 export default function App() {
   return (
@@ -8,6 +9,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<OrderTrackingPortal />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/faq" element={<FAQPage />} />
       </Routes>
     </div>
   )

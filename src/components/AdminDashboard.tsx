@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, Bell, BellOff, Upload } from 'lucide-react';
+import { Search, Plus, X, Upload } from 'lucide-react';
+import { ReminderBell } from './ReminderBell';
+import { MetricsDashboard } from './MetricsDashboard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { OrderCalendarView } from './OrderCalendarView';
 import { OrderForm } from './OrderForm';
 import { OrderList } from './OrderList';
 import { OrderDetails } from './OrderDetails';
@@ -11,8 +15,10 @@ import { supabase } from '../lib/supabase';
 import { Order } from '../types/order';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
-import { useNotifications } from '../hooks/useNotifications';
 import { Layout } from './Layout';
+import { Badge } from './ui/badge';
+
+const QUICK_FILTERS = ['Confirmado', 'Em transporte', 'Aguardando retirada', 'Pendente', 'Entregue', 'Cancelado'];
 
 export const AdminDashboard = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -20,31 +26,22 @@ export const AdminDashboard = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState('list');
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showImporter, setShowImporter] = useState(false);
   const navigate = useNavigate();
 
-  // Hook de notificações
-  const {
-    enabled: notificationsEnabled,
-    toggleNotifications
-  } = useNotifications();
-
+  // Lógica de autenticação simplificada
   useEffect(() => {
-    checkAuth();
-    
-    // Ouvir mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          navigate('/');
-        }
-        setUser(session?.user || null);
-        setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+      if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+        navigate('/');
       }
-    );
-
+    });
     return () => subscription.unsubscribe();
   }, [navigate]);
 
@@ -53,31 +50,24 @@ export const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Filtrar pedidos baseado no termo de busca
-    if (searchTerm.trim() === '') {
-      setFilteredOrders(orders);
-    } else {
-      const term = searchTerm.toLowerCase();
-      const filtered = orders.filter(order =>
-        order.order_number.toLowerCase().includes(term) ||
-        order.customer_name.toLowerCase().includes(term) ||
-        order.cnpj.includes(term) ||
-        order.status.toLowerCase().includes(term)
-      );
-      setFilteredOrders(filtered);
-    }
-  }, [searchTerm, orders]);
+    // Lógica de filtragem unificada
+    const lowercasedSearchTerm = searchTerm.toLowerCase();
+    const filtered = orders.filter(order => {
+      const searchMatch = searchTerm.trim() === '' ||
+        order.order_number.toLowerCase().includes(lowercasedSearchTerm) ||
+        order.customer_name.toLowerCase().includes(lowercasedSearchTerm) ||
+        order.cnpj.includes(lowercasedSearchTerm) ||
+        order.status.toLowerCase().includes(lowercasedSearchTerm);
+      const statusMatch = !statusFilter || order.status === statusFilter;
+      return searchMatch && statusMatch;
+    });
+    setFilteredOrders(filtered);
+  }, [searchTerm, orders, statusFilter]);
 
   const loadOrders = async () => {
     try {
       const ordersData = await SupabaseService.getOrders();
       setOrders(ordersData);
-      setFilteredOrders(ordersData);
-      
-      // Se o pedido selecionado foi excluído, limpe a seleção
-      if (selectedOrder && !ordersData.find(o => o.id === selectedOrder.id)) {
-        setSelectedOrder(null);
-      }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
@@ -105,176 +95,96 @@ export const AdminDashboard = () => {
     setSearchTerm('');
   };
 
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setUser(session?.user || null);
-    setLoading(false);
-    
-    if (!session) {
-      navigate('/');
-    }
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
-  const handleToggleNotifications = async () => {
-    const success = await toggleNotifications();
-    if (success) {
-      alert('Notificações ativadas com sucesso!');
-    }
-  };
-
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p>Carregando pedidos...</p>
-          </div>
+        <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p>Carregando...</p>
+            </div>
         </div>
-      </div>
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p>Redirecionando para login...</p>
-        </div>
-      </div>
-    );
-  }
+  if (!user) { return null; }
 
   return (
     <Layout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-8xl mx-auto">
+        <MetricsDashboard />
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Painel Administrativo</h1>
             <div className="flex gap-2 mt-2">
-              <Button variant="outline" onClick={handleLogout}>
-                Sair
-              </Button>
-              <Button
-                variant={notificationsEnabled ? "default" : "outline"}
-                onClick={handleToggleNotifications}
-                className="flex items-center gap-2"
-              >
-                {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
-                {notificationsEnabled ? 'Notificações Ativas' : 'Ativar Notificações'}
-              </Button>
+              <ReminderBell />
+              <Button variant="outline" onClick={handleLogout}>Sair</Button>
             </div>
-              <p className="text-gray-600 mt-1">
-                {orders.length} pedido{orders.length !== 1 ? 's' : ''} cadastrado{orders.length !== 1 ? 's' : ''}
-              </p>
           </div>
           <div className="flex items-center gap-4">
-            <Button
-              onClick={() => setShowImporter(true)}
-              className="flex items-center gap-2"
-              variant="outline"
-            >
-              <Upload className="w-4 h-4" />
-              Importar do Excel
-            </Button>
-
+            <Button onClick={() => setShowImporter(true)} variant="outline"><Upload className="w-4 h-4 mr-2" />Importar</Button>
             {showImporter && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <ExcelImporter 
-                  onImportComplete={() => {
-                    setShowImporter(false);
-                    loadOrders();
-                  }}
-                  onCancel={() => setShowImporter(false)}
-                />
+                <ExcelImporter onImportComplete={() => { setShowImporter(false); loadOrders(); }} onCancel={() => setShowImporter(false)} />
               </div>
             )}
-            
-            <Button
-              onClick={() => setShowForm(!showForm)}
-              className="flex items-center gap-2"
-            >
-              {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {showForm ? 'Fechar' : 'Novo Pedido'}
-            </Button>
+            <Button onClick={() => setShowForm(!showForm)}>{showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}{showForm ? 'Fechar' : 'Novo Pedido'}</Button>
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search & Filters */}
         <div className="mb-6">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Buscar por número, cliente, CNPJ ou status..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="pl-10 pr-10 bg-white"
-            />
-            {searchTerm && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <Input placeholder="Buscar por número, cliente, CNPJ ou status..." value={searchTerm} onChange={handleSearchChange} className="pl-10 pr-10 bg-white" />
+            {searchTerm && <button onClick={clearSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
           </div>
-          
-          {searchTerm && (
-            <p className="text-sm text-gray-500 mt-2">
-              {filteredOrders.length} resultado{filteredOrders.length !== 1 ? 's' : ''} encontrado{filteredOrders.length !== 1 ? 's' : ''}
-            </p>
-          )}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-sm font-medium text-gray-600">Filtros:</span>
+            <Badge variant={!statusFilter ? 'default' : 'outline'} onClick={() => setStatusFilter(null)} className="cursor-pointer">Todos</Badge>
+            {QUICK_FILTERS.map(filter => (
+              <Badge key={filter} variant={statusFilter === filter ? 'default' : 'outline'} onClick={() => setStatusFilter(filter)} className="cursor-pointer">{filter}</Badge>
+            ))}
+          </div>
         </div>
 
-        {/* Order Form */}
-        {showForm && (
-          <OrderForm 
-            onSubmit={handleCreateOrder} 
-            onCancel={() => setShowForm(false)}
-          />
-        )}
+        {/* Content Area */}
+        <div className="mb-4">
+            <h2 className="text-lg font-semibold">{statusFilter ? `Pedidos: ${statusFilter}` : 'Todos os Pedidos'}</h2>
+        </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Order List */}
-          <div>
-            <div className="bg-white rounded-lg border">
-              <OrderList 
-                orders={filteredOrders} 
-                onSelectOrder={setSelectedOrder}
-                selectedOrderId={selectedOrder?.id}
-              />
-            </div>
-          </div>
+        {showForm && <div className="mb-6"><OrderForm onSubmit={handleCreateOrder} onCancel={() => setShowForm(false)} /></div>}
 
-          {/* Order Details */}
-          <div>
-            {selectedOrder ? (
-              <OrderDetails 
-                order={selectedOrder} 
-                onUpdate={loadOrders} 
-                onClose={() => setSelectedOrder(null)}
-              />
-            ) : (
-              <div className="bg-white rounded-lg border p-8 text-center">
-                <div className="text-gray-400 mb-4">
-                  <Search className="w-12 h-12 mx-auto" />
-                </div>
-                <h3 className="font-semibold text-gray-600 mb-2">
-                  Selecione um pedido
-                </h3>
-                <p className="text-gray-500 text-sm">
-                  Clique em um pedido da lista ao lado para visualizar e editar os detalhes
-                </p>
+        <Tabs value={viewMode} onValueChange={setViewMode} className="w-full">
+          <TabsList className="mb-4 bg-gray-200 p-1 rounded-lg">
+            <TabsTrigger value="list">Lista</TabsTrigger>
+            <TabsTrigger value="calendar">Calendário</TabsTrigger>
+          </TabsList>
+          <TabsContent value="list">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div>
+                <div className="bg-white rounded-lg border"><OrderList orders={filteredOrders} onSelectOrder={setSelectedOrder} selectedOrderId={selectedOrder?.id} /></div>
               </div>
-            )}
-          </div>
-        </div>
+              <div>
+                {selectedOrder ? <OrderDetails order={selectedOrder} onUpdate={loadOrders} onClose={() => setSelectedOrder(null)} /> : (
+                  <div className="bg-white rounded-lg border p-8 text-center h-full flex flex-col justify-center">
+                    <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                    <h3 className="font-semibold text-gray-700">Selecione um pedido</h3>
+                    <p className="text-gray-500 text-sm">Clique em um pedido da lista para ver os detalhes</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="calendar">
+            <OrderCalendarView orders={filteredOrders} />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

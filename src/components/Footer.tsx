@@ -1,6 +1,6 @@
 // components/Footer.tsx
 import React from 'react';
-import { Building, Mail, Phone, MapPin } from 'lucide-react';
+import { Building, Mail, Phone, MapPin, Link } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -48,8 +48,11 @@ export const Footer: React.FC = () => {
             <p className="text-gray-300 mb-2">
               Desenvolvido por WL Pesos Padrão
             </p>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 mb-2">
               Sistema de gestão de pedidos e rastreamento
+            </p>
+            <p className="text-sm text-gray-400">
+              <Link to="/faq" className="hover:underline">Perguntas Frequentes (FAQ)</Link>
             </p>
             <p className="text-sm text-gray-400 mt-2">
               © {currentYear} - Todos os direitos reservados

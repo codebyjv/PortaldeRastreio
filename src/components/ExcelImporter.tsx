@@ -1,47 +1,38 @@
 // components/ExcelImporter.tsx
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ChevronsRight, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { SupabaseService } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
+import { Order } from '../types/order';
+import { Badge } from './ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 interface ExcelImporterProps {
   onImportComplete: () => void;
   onCancel: () => void;
 }
 
+type ValidationStatus = 'Válido' | 'Inválido' | 'Duplicado';
+
+interface PreviewItem extends Partial<Order> {
+  validationStatus: ValidationStatus;
+  validationErrors: string[];
+}
+
 interface ImportResult {
   success: number;
   errors: number;
-  messages: string[];
+  skipped: number;
 }
 
 export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, onCancel }) => {
-  const [isDragging, setIsDragging] = useState(false);
+  const [view, setView] = useState<'upload' | 'preview' | 'result'>('upload');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewItem[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      processFile(files[0]);
-    }
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -51,190 +42,206 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
-    setImportResult(null);
-    
     try {
+      const existingOrderNumbers = await SupabaseService.getOrderNumbers();
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       
-      await processERPData(data);
+      validateData(data, existingOrderNumbers);
+      setView('preview');
     } catch (error: any) {
-      setImportResult({
-        success: 0,
-        errors: 1,
-        messages: [error.message || 'Erro ao processar arquivo Excel']
-      });
+      alert(`Erro ao processar arquivo: ${error.message}`);
+      resetImporter();
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const processERPData = async (data: any[]) => {
-    const results: ImportResult = {
-      success: 0,
-      errors: 0,
-      messages: []
-    };
-    
-    // Padrão regex para identificar linhas de pedido no formato do ERP
-    // Exemplo: "4063023 - SAO PAULO BALANCAS E MAQUINAS LTDA - 08.431.807/0001-90 - 20/08/2025"
+  const validateData = (data: any[], existingOrderNumbers: Set<string>) => {
+    const validatedItems: PreviewItem[] = [];
     const orderPattern = /(\d+)\s*-\s*([^-]+)\s*-\s*([\d.\/]+-?\d*)\s*-\s*(\d{2}\/\d{2}\/\d{4})/;
-    
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      
-      // Pular linhas vazias ou com poucos dados
-      if (!row || row.length < 5) continue;
-      
-      // Procurar por células que contenham o padrão de pedido
-      for (let j = 0; j < row.length; j++) {
-        const cellValue = row[j]?.toString().trim();
-        
+
+    for (const row of data) {
+      if (!row || row.length < 1) continue;
+
+      for (const cellValue of row) {
         if (cellValue && orderPattern.test(cellValue)) {
-          const match = cellValue.match(orderPattern);
-          
-          if (match && match.length >= 5) {
-            try {
-              const orderData = {
-                order_number: match[1].trim(),
-                customer_name: match[2].trim(),
-                cnpj: match[3].trim().replace(/\D/g, ''),
-                order_date: convertDate(match[4].trim()),
-                status: 'Confirmado',
-                total_value: 0,
-                expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                created_at: new Date().toISOString(),
-                expiration_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-              };
-              
-              // Validar dados obrigatórios
-              if (!orderData.order_number || !orderData.customer_name) {
-                results.errors++;
-                results.messages.push(`Linha ${i + 1}: Número do pedido ou nome do cliente ausente`);
-                continue;
-              }
-              
-              await SupabaseService.createOrder(orderData);
-              results.success++;
-              results.messages.push(`Pedido ${orderData.order_number} importado com sucesso`);
-            } catch (error: any) {
-              results.errors++;
-              results.messages.push(`Erro na linha ${i + 1}: ${error.message}`);
-            }
-            
-            // Pular para a próxima linha após encontrar um pedido
-            break;
+          const match = cellValue.toString().trim().match(orderPattern);
+          if (!match) continue;
+
+          const orderData: Partial<Order> = {
+            order_number: match[1]?.trim(),
+            customer_name: match[2]?.trim(),
+            cnpj: match[3]?.trim().replace(/\D/g, ''),
+            order_date: convertDate(match[4]?.trim()),
+          };
+
+          const validationErrors: string[] = [];
+          if (!orderData.order_number) validationErrors.push('Nº do pedido ausente.');
+          if (!orderData.customer_name) validationErrors.push('Nome do cliente ausente.');
+          if (!orderData.cnpj) validationErrors.push('CNPJ ausente.');
+          if (!orderData.order_date) validationErrors.push('Data do pedido inválida.');
+
+          let validationStatus: ValidationStatus = 'Válido';
+          if (validationErrors.length > 0) {
+            validationStatus = 'Inválido';
+          } else if (existingOrderNumbers.has(orderData.order_number!)) {
+            validationStatus = 'Duplicado';
+            validationErrors.push('Este número de pedido já existe no sistema.');
           }
+
+          validatedItems.push({ ...orderData, validationStatus, validationErrors });
+          break; // Process only first match per row
         }
       }
     }
-    
-    setImportResult(results);
-    if (results.success > 0) {
-      onImportComplete();
-    }
+    setPreviewData(validatedItems);
   };
 
-  // Função para converter datas do formato brasileiro
-  const convertDate = (dateString: string): string => {
-    try {
-      const parts = dateString.split('/');
-      if (parts.length === 3) {
-        // Formato DD/MM/YYYY para YYYY-MM-DD
-        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
+  const handleConfirmImport = async () => {
+    setIsProcessing(true);
+    const validItems = previewData.filter(item => item.validationStatus === 'Válido');
+    let successCount = 0;
+
+    for (const item of validItems) {
+      try {
+        const orderPayload = {
+          order_number: item.order_number!,
+          customer_name: item.customer_name!,
+          cnpj: item.cnpj!,
+          order_date: item.order_date!,
+          status: 'Confirmado',
+          total_value: 0, // Valor padrão
+          expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+        await SupabaseService.createOrder(orderPayload as any);
+        successCount++;
+      } catch (error) {
+        console.error(`Falha ao importar pedido ${item.order_number}:`, error);
       }
-    } catch (e) {
-      console.error('Erro ao converter data:', e);
     }
-    return new Date().toISOString();
+
+    setImportResult({
+      success: successCount,
+      errors: validItems.length - successCount,
+      skipped: previewData.length - validItems.length,
+    });
+
+    setIsProcessing(false);
+    setView('result');
+    if (successCount > 0) onImportComplete();
+  };
+
+  const convertDate = (dateString: string): string => {
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
+    }
+    return '';
   };
 
   const resetImporter = () => {
+    setView('upload');
+    setPreviewData([]);
     setImportResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  const renderUploadView = () => (
+    <div
+      className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors border-gray-300 hover:border-blue-400"
+      onClick={() => fileInputRef.current?.click()}
+    >
+      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <p className="text-gray-600 mb-2">Arraste um arquivo Excel aqui ou clique para selecionar</p>
+      <p className="text-sm text-gray-500">Formato suportado: .xlsx</p>
+      <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".xlsx,.xls" className="hidden" />
+    </div>
+  );
+
+  const renderPreviewView = () => (
+    <div>
+      <h4 className="font-medium mb-2">Pré-visualização da Importação</h4>
+      <p className="text-sm text-muted-foreground mb-4">{previewData.length} registros encontrados. Apenas os itens marcados como 'Válido' serão importados.</p>
+      <div className="max-h-96 overflow-y-auto border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Status</TableHead>
+              <TableHead>Nº Pedido</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Detalhes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {previewData.map((item, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  <Badge variant={item.validationStatus === 'Válido' ? 'default' : 'destructive'}>{
+                    item.validationStatus
+                  }</Badge>
+                </TableCell>
+                <TableCell>{item.order_number || '-'}</TableCell>
+                <TableCell>{item.customer_name || '-'}</TableCell>
+                <TableCell className="text-xs text-red-600">{item.validationErrors.join(', ')}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex justify-end gap-4 mt-6">
+        <Button variant="outline" onClick={resetImporter}>Cancelar</Button>
+        <Button onClick={handleConfirmImport} disabled={isProcessing || !previewData.some(p => p.validationStatus === 'Válido')}>
+          {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ChevronsRight className="mr-2 h-4 w-4"/>}
+          Importar Válidos
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderResultView = () => (
+    <div className="text-center">
+      {importResult && importResult.success > 0 ? (
+        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+      ) : (
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+      )}
+      <h3 className="font-semibold text-lg mb-2">Importação Concluída</h3>
+      <p className="mb-4">
+        {importResult?.success} pedido(s) importado(s) com sucesso.<br />
+        {importResult?.skipped} registro(s) ignorado(s) (duplicados ou inválidos).<br />
+        {importResult?.errors} erro(s) durante a importação.
+      </p>
+      <div className="flex justify-center gap-4 mt-6">
+        <Button onClick={resetImporter}>Importar Outro Arquivo</Button>
+        <Button variant="outline" onClick={onCancel}>Fechar</Button>
+      </div>
+    </div>
+  );
+
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center">
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex items-center">
           <Upload className="w-5 h-5 mr-2" />
-          Importar Pedidos do ERP
-        </CardTitle>
+          <CardTitle>Importar Pedidos do ERP</CardTitle>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onCancel}><X className="h-4 w-4"/></Button>
       </CardHeader>
       <CardContent>
-        {!importResult ? (
-          <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">
-              Arraste um arquivo Excel aqui ou clique para selecionar
-            </p>
-            <p className="text-sm text-gray-500">
-              Formato suportado: Excel (.xlsx)
-            </p>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept=".xlsx,.xls"
-              className="hidden"
-            />
-          </div>
-        ) : (
-          <div className="text-center">
-            {importResult.success > 0 ? (
-              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            ) : (
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            )}
-            
-            <h3 className="font-semibold text-lg mb-2">
-              {importResult.success > 0 ? 'Importação Concluída' : 'Importação com Erros'}
-            </h3>
-            
-            <p className="mb-4">
-              {importResult.success} pedido(s) importado(s) com sucesso<br />
-              {importResult.errors} erro(s) encontrado(s)
-            </p>
-            
-            {importResult.messages.length > 0 && (
-              <div className="bg-gray-100 p-4 rounded-lg max-h-32 overflow-y-auto text-left">
-                <h4 className="font-medium mb-2">Detalhes:</h4>
-                {importResult.messages.map((message, index) => (
-                  <p key={index} className="text-sm text-gray-600">• {message}</p>
-                ))}
-              </div>
-            )}
-            
-            <div className="flex justify-center gap-4 mt-6">
-              <Button onClick={resetImporter}>
-                Importar Outro Arquivo
-              </Button>
-              <Button variant="outline" onClick={onCancel}>
-                Fechar
-              </Button>
+        {isProcessing && view === 'upload' && (
+            <div className="text-center p-8">
+                <Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-500 mb-4" />
+                <p>Analisando arquivo...</p>
             </div>
-          </div>
         )}
-        
-        {isProcessing && (
-          <div className="mt-4 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-            <p>Processando arquivo...</p>
-          </div>
-        )}
+        {!isProcessing && view === 'upload' && renderUploadView()}
+        {view === 'preview' && renderPreviewView()}
+        {view === 'result' && renderResultView()}
       </CardContent>
     </Card>
   );
