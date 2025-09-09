@@ -27,6 +27,13 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, sel
         <div
           key={order.id}
           onClick={() => onSelectOrder(order)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onSelectOrder(order);
+            }
+          }}
+          role="button"
+          tabIndex={0}
           className={`border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
             order.id === selectedOrderId
               ? 'border-blue-500 bg-blue-50'

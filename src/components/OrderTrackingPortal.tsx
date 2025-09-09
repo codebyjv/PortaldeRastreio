@@ -338,7 +338,7 @@ export function OrderTrackingPortal() {
                         </h4>
                         <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
                           <li>Copie o código de rastreio: <strong>{searchResult.tracking_code}</strong></li>
-                          <li>Clique no link "Rastrear" acima ou visite o site da transportadora</li>
+                          <li>Clique no link &quot;Rastrear&quot; acima ou visite o site da transportadora</li>
                           <li>Cole o código no campo de rastreamento</li>
                           <li>Acompanhe a situação do seu pedido</li>
                         </ol>

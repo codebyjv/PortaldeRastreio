@@ -44,7 +44,8 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 
-function useSidebar() {
+// eslint-disable-next-line react-refresh/only-export-components
+const useSidebar = () => {
   const context = React.useContext(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
@@ -698,6 +699,7 @@ function SidebarMenuSubButton({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export {
   Sidebar,
   SidebarContent,

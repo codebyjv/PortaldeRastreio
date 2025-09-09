@@ -4,7 +4,7 @@ import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 import * as Recharts from "recharts";
 
-type TooltipPayload = Recharts.DefaultTooltipContentProps<any, any>['payload'];
+type TooltipPayload = Recharts.DefaultTooltipContentProps<string | number, string | number>['payload'];
 
 import { cn } from "./utils";
 
@@ -187,7 +187,7 @@ function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload.map((item: any, index: number) => {
+        {payload.map((item: TooltipPayload[0], index: number) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
           const indicatorColor = color || item.payload.fill || item.color;
@@ -263,7 +263,7 @@ type LegendPayloadItem = {
   type: 'line' | 'square' | 'circle' | 'cross' | 'diamond' | 'star' | 'triangle' | 'wye';
   id: string;
   color: string;
-  payload?: any;
+  payload?: Record<string, unknown>;
 };
 
 interface CustomLegendProps extends Omit<Recharts.LegendProps, 'payload'> {
