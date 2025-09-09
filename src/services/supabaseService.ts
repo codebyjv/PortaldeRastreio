@@ -1,6 +1,6 @@
 // services/supabaseService.ts
 import { supabase } from '../lib/supabase'
-import { Order, OrderDocument } from '../types/order'
+import { Order, OrderDocument, ActionLog, DashboardMetrics, ReminderNotification } from '../types/order'
 
 // Helper interno para registrar ações. Não é exportado.
 const _logAction = async (action: string, orderId: string | null, details?: object) => {
@@ -145,6 +145,21 @@ export const SupabaseService = {
     if (dbError) throw dbError;
 
     await _logAction(`Documento '${file.name}' (${category}) carregado.`, orderId);
+
+    // Atualiza o status do pedido se a categoria for "Nota Fiscal"
+    if (category === 'Nota Fiscal') {
+      const { error: statusError } = await supabase
+        .from('orders')
+        .update({ status: 'Faturado' })
+        .eq('id', orderId);
+
+      if (statusError) {
+        console.error(`Falha ao atualizar status do pedido para 'Faturado' após upload:`, statusError);
+      } else {
+        await _logAction(`Status do pedido alterado para 'Faturado' automaticamente.`, orderId);
+      }
+    }
+
     return dbData;
   },
 
@@ -183,8 +198,61 @@ export const SupabaseService = {
     await _logAction(`Documento '${document.original_name}' excluído.`, document.order_id);
   },
 
+  // ===== NOTIFICAÇÕES / LEMBRETES =====
+  async getUnreadNotifications(): Promise<ReminderNotification[]> { // ReminderNotification[]
+    const { data, error } = await supabase
+      .from('reminders') // Assuming the table is named 'reminders'
+      .select('*')
+      .eq('is_read', false)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar notificações não lidas:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async markNotificationAsRead(notificationId: number): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('reminders')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .select(); // select() para que o rpc retorne algo
+
+    if (error) {
+      console.error(`Erro ao marcar notificação ${notificationId} como lida:`, error);
+      return false;
+    }
+    
+    if(data !== null) {
+        await _logAction('Notificação marcada como lida', null, { notificationId });
+    }
+
+    return data !== null;
+  },
+
+  async markAllNotificationsAsRead(): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('reminders')
+      .update({ is_read: true })
+      .eq('is_read', false)
+      .select(); // select() para que o rpc retorne algo
+
+    if (error) {
+      console.error('Erro ao marcar todas as notificações como lidas:', error);
+      return false;
+    }
+    
+    if(data !== null) {
+        await _logAction('Todas as notificações foram marcadas como lidas', null);
+    }
+
+    return data !== null;
+  },
+
   // ===== DASHBOARD & LOGS =====
-  async getDashboardMetrics(): Promise<any> {
+  async getDashboardMetrics(): Promise<DashboardMetrics> {
     const { data, error } = await supabase.rpc('get_dashboard_metrics');
     if (error) {
       console.error('Erro ao buscar métricas do dashboard:', error);
@@ -193,7 +261,7 @@ export const SupabaseService = {
     return data;
   },
 
-  async getActionLogs(orderId: string): Promise<any[]> {
+  async getActionLogs(orderId: string): Promise<ActionLog[]> {
     const { data, error } = await supabase
       .from('action_logs')
       .select('*')

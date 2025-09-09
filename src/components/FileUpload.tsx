@@ -72,8 +72,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onUploadComplete();
       alert('Arquivos salvos com sucesso!');
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Ocorreu um erro desconhecido durante o upload.');
+      }
     } finally {
       setUploading(false);
       // Limpar o input de arquivo para permitir o reenvio do mesmo arquivo

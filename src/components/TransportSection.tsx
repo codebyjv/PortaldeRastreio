@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SupabaseService } from '../services/supabaseService';
 import { Order } from '../types/order';
+import { Label } from './ui/label';
 
 interface TransportSectionProps {
   order: Order;
@@ -87,44 +88,47 @@ export const TransportSection: React.FC<TransportSectionProps> = ({ order, onUpd
       {isEditing ? (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <Label htmlFor="collection_number-transport" className="block text-sm font-medium text-gray-700 mb-1">
               Número da Coleta
-            </label>
+            </Label>
             <Input
+              id="collection_number-transport"
               value={formData.collection_number}
               onChange={(e) => setFormData({ ...formData, collection_number: e.target.value })}
               placeholder="Número da coleta"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <Label htmlFor="shipping_carrier-transport" className="block text-sm font-medium text-gray-700 mb-1">
               Transportadora
-            </label>
+            </Label>
             <Input
+              id="shipping_carrier-transport"
               value={formData.shipping_carrier}
               onChange={(e) => setFormData({ ...formData, shipping_carrier: e.target.value })}
               placeholder="Nome da transportadora"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <Label htmlFor="tracking_code-transport" className="block text-sm font-medium text-gray-700 mb-1">
               Código de Rastreio
-            </label>
+            </Label>
             <Input
+              id="tracking_code-transport"
               value={formData.tracking_code}
               onChange={(e) => setFormData({ ...formData, tracking_code: e.target.value })}
               placeholder="Código de rastreio"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <Label htmlFor="shipping_method-transport" className="block text-sm font-medium text-gray-700 mb-1">
               Método de Envio
-            </label>
+            </Label>
             <Select
               value={formData.shipping_method}
               onValueChange={(value) => setFormData({ ...formData, shipping_method: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="shipping_method-transport">
                 <SelectValue placeholder="Selecione o método" />
               </SelectTrigger>
               <SelectContent>

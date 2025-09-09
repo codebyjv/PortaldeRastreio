@@ -47,28 +47,29 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
       
       validateData(data, existingOrderNumbers);
       setView('preview');
-    } catch (error: any) {
-      alert(`Erro ao processar arquivo: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido';
+      alert(`Erro ao processar arquivo: ${message}`);
       resetImporter();
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const validateData = (data: any[], existingOrderNumbers: Set<string>) => {
+  const validateData = (data: unknown[][], existingOrderNumbers: Set<string>) => {
     const validatedItems: PreviewItem[] = [];
-    const orderPattern = /(\d+)\s*-\s*([^-]+)\s*-\s*([\d.\/]+-?\d*)\s*-\s*(\d{2}\/\d{2}\/\d{4})/;
+    const orderPattern = /(\d+)\s*-\s*([^-]+)\s*-\s*([\d./]+-?\d*)\s*-\s*(\d{2}\/\d{2}\/\d{4})/;
 
     for (const row of data) {
       if (!row || row.length < 1) continue;
 
       for (const cellValue of row) {
-        if (cellValue && orderPattern.test(cellValue)) {
-          const match = cellValue.toString().trim().match(orderPattern);
+        if (cellValue && typeof cellValue === 'string' && orderPattern.test(cellValue)) {
+          const match = cellValue.trim().match(orderPattern);
           if (!match) continue;
 
           const orderData: Partial<Order> = {
@@ -107,7 +108,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
 
     for (const item of validItems) {
       try {
-        const orderPayload = {
+        const orderPayload: Omit<Order, 'id' | 'created_at' | 'expiration_date'> = {
           order_number: item.order_number!,
           customer_name: item.customer_name!,
           cnpj: item.cnpj!,
@@ -116,7 +117,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
           total_value: 0, // Valor padrão
           expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         };
-        await SupabaseService.createOrder(orderPayload as any);
+        await SupabaseService.createOrder(orderPayload);
         successCount++;
       } catch (error) {
         console.error(`Falha ao importar pedido ${item.order_number}:`, error);
@@ -153,8 +154,11 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
 
   const renderUploadView = () => (
     <div
+      role="button"
+      tabIndex={0}
       className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors border-gray-300 hover:border-blue-400"
       onClick={() => fileInputRef.current?.click()}
+      onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
     >
       <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
       <p className="text-gray-600 mb-2">Arraste um arquivo Excel aqui ou clique para selecionar</p>
@@ -166,7 +170,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
   const renderPreviewView = () => (
     <div>
       <h4 className="font-medium mb-2">Pré-visualização da Importação</h4>
-      <p className="text-sm text-muted-foreground mb-4">{previewData.length} registros encontrados. Apenas os itens marcados como 'Válido' serão importados.</p>
+      <p className="text-sm text-muted-foreground mb-4">{previewData.length} registros encontrados. Apenas os itens marcados como &apos;Válido&apos; serão importados.</p>
       <div className="max-h-96 overflow-y-auto border rounded-md">
         <Table>
           <TableHeader>

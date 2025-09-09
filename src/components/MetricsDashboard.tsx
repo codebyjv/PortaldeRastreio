@@ -106,7 +106,7 @@ export const MetricsDashboard = () => {
                                     dataKey="count"
                                     nameKey="status"
                                 >
-                                    {metrics.orders_by_status.map((entry, index) => (
+                                    {metrics.orders_by_status.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>

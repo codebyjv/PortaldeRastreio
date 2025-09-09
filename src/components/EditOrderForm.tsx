@@ -7,6 +7,7 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Order } from '../types/order';
 import { SupabaseService } from '../services/supabaseService';
+import { Label } from './ui/label';
 
 interface EditOrderFormProps {
   order: Order;
@@ -65,8 +66,9 @@ export const EditOrderForm: React.FC<EditOrderFormProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">Valor Total (R$)</label>
+              <Label htmlFor="total_value-edit" className="text-sm font-medium">Valor Total (R$)</Label>
               <Input
+                id="total_value-edit"
                 type="number"
                 name="total_value"
                 value={formData.total_value}
@@ -78,8 +80,9 @@ export const EditOrderForm: React.FC<EditOrderFormProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium">Nova Previsão de Entrega</label>
+              <Label htmlFor="expected_delivery-edit" className="text-sm font-medium">Nova Previsão de Entrega</Label>
               <Input
+                id="expected_delivery-edit"
                 type="date"
                 name="expected_delivery"
                 value={formData.expected_delivery}

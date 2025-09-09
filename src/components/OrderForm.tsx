@@ -4,8 +4,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Order } from '../types/order';
-
 import { useNotifications } from '../hooks/useNotifications';
+import { Label } from './ui/label';
 
 interface OrderFormProps {
   onSubmit: (orderData: Omit<Order, 'id' | 'createdAt' | 'expirationDate'>) => void;
@@ -85,8 +85,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium">Número do Pedido</label>
+              <Label htmlFor="order_number-create" className="text-sm font-medium">Número do Pedido</Label>
               <Input
+                id="order_number-create"
                 name="order_number"
                 value={formData.order_number}
                 onChange={handleChange}
@@ -96,8 +97,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Nome do Cliente</label>
+              <Label htmlFor="customer_name-create" className="text-sm font-medium">Nome do Cliente</Label>
               <Input
+                id="customer_name-create"
                 name="customer_name"
                 value={formData.customer_name}
                 onChange={handleChange}
@@ -107,8 +109,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
             </div>
 
             <div>
-              <label className="text-sm font-medium">CNPJ</label>
+              <Label htmlFor="cnpj-create" className="text-sm font-medium">CNPJ</Label>
               <Input
+                id="cnpj-create"
                 name="cnpj"
                 value={formData.cnpj}
                 onChange={handleChange}
@@ -118,8 +121,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Status</label>
+              <Label htmlFor="status-create" className="text-sm font-medium">Status</Label>
               <select
+                id="status-create"
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
@@ -136,8 +140,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Data do Pedido</label>
+              <Label htmlFor="order_date-create" className="text-sm font-medium">Data do Pedido</Label>
               <Input
+                id="order_date-create"
                 type="date"
                 name="order_date"
                 value={formData.order_date}
@@ -147,8 +152,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Previsão de Entrega</label>
+              <Label htmlFor="expected_delivery-create" className="text-sm font-medium">Previsão de Entrega</Label>
               <Input
+                id="expected_delivery-create"
                 type="date"
                 name="expected_delivery"
                 value={formData.expected_delivery}
@@ -158,8 +164,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, onCancel }) => {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Valor Total (R$)</label>
+              <Label htmlFor="total_value-create" className="text-sm font-medium">Valor Total (R$)</Label>
               <Input
+                id="total_value-create"
                 type="number"
                 name="total_value"
                 value={formData.total_value}

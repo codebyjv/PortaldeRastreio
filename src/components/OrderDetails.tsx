@@ -91,7 +91,12 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
           </TabsContent>
           
           <TabsContent value="documents" className="flex-grow mt-4">
-            <DocumentsSection orderId={order.id} onDeleteDocument={onUpdate} />
+            <DocumentsSection 
+              orderId={order.id} 
+              orderNumber={order.order_number}
+              customerName={order.customer_name}
+              onDeleteDocument={onUpdate} 
+            />
           </TabsContent>
 
           <TabsContent value="history" className="flex-grow mt-4">

@@ -14,8 +14,7 @@ import { Order } from '../types/order';
 import { OrderMapperService } from '../services/orderMapperService'
 import { LoginModal } from './LoginModal'
 import { Layout } from './Layout';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
-import { faqs } from '../../pages/faq';
+import { FAQPage } from '../../pages/faq';
 
 export function OrderTrackingPortal() {
    const navigate = useNavigate();
@@ -383,6 +382,9 @@ export function OrderTrackingPortal() {
             </Card>
           )}
         </div>
+
+        {/* ===== FAQ - Perguntas Frequentes ===== */}
+        <FAQPage/>
       </div>
     </Layout>
   )

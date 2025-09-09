@@ -27,6 +27,8 @@ export interface OrderDocument {
   uploaded_at: string;
   expires_at: string;
   is_default: boolean;
+  is_archived: boolean;
+  category: 'Nota Fiscal' | 'Boleto' | 'Certificado' | 'Manual';
 }
 
 export interface StatusTimeline {
@@ -36,4 +38,28 @@ export interface StatusTimeline {
   transito: Date;
   entrega: Date;
   concluido: Date;
+}
+
+export interface ActionLog {
+  id: number;
+  created_at: string;
+  user_email: string;
+  action: string;
+  order_id: string;
+  details: object | null;
+}
+
+export interface DashboardMetrics {
+  total_orders: number;
+  pending_orders: number;
+  shipped_orders: number;
+  average_delivery_time: number;
+}
+
+export interface ReminderNotification {
+  id: number;
+  created_at: string;
+  message: string;
+  order_id: string;
+  is_read: boolean;
 }

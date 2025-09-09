@@ -3,15 +3,7 @@ import { Bell, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { SupabaseService } from '../services/supabaseService';
-
-// Definindo o tipo de notificação aqui para clareza
-export interface ReminderNotification {
-  id: number;
-  created_at: string;
-  message: string;
-  order_id: string;
-  is_read: boolean;
-}
+import { ReminderNotification } from '../types/order';
 
 export const ReminderBell = () => {
   const [notifications, setNotifications] = useState<ReminderNotification[]>([]);

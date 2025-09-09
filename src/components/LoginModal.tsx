@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { supabase } from '../lib/supabase';
+import { Label } from './ui/label';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -65,8 +66,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Email</label>
+              <Label htmlFor="email-login" className="text-sm font-medium">Email</Label>
               <Input
+                id="email-login"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -77,9 +79,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium">Senha</label>
+              <Label htmlFor="password-login" className="text-sm font-medium">Senha</Label>
               <div className="relative">
                 <Input
+                  id="password-login"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

@@ -2,17 +2,10 @@ import { useState, useEffect } from 'react';
 import { SupabaseService } from '../services/supabaseService';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { History } from 'lucide-react';
+import { ActionLog } from '../types/order';
 
 interface ActionLogFeedProps {
   orderId: string;
-}
-
-interface ActionLog {
-  id: number;
-  created_at: string;
-  user_email: string;
-  action: string;
-  details: any;
 }
 
 export const ActionLogFeed = ({ orderId }: ActionLogFeedProps) => {

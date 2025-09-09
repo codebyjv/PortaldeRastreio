@@ -115,17 +115,14 @@ export const AdminDashboard = () => {
   return (
     <Layout>
       <div className="p-6 max-w-8xl mx-auto">
-        <MetricsDashboard />
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        {/* ===== New Unified Header ===== */}
+        <div className="flex justify-between items-center mb-6">
+          {/* Left Side: Title */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Painel Administrativo</h1>
-            <div className="flex gap-2 mt-2">
-              <ReminderBell />
-              <Button variant="outline" onClick={handleLogout}>Sair</Button>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">Painel Administrativo</h1>
           </div>
+
+          {/* Right Side: Actions */}
           <div className="flex items-center gap-4">
             <Button onClick={() => setShowImporter(true)} variant="outline"><Upload className="w-4 h-4 mr-2" />Importar</Button>
             {showImporter && (
@@ -134,14 +131,23 @@ export const AdminDashboard = () => {
               </div>
             )}
             <Button onClick={() => setShowForm(!showForm)}>{showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}{showForm ? 'Fechar' : 'Novo Pedido'}</Button>
+            
+            {/* Separator */}
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+
+            {/* Moved buttons */}
+            <ReminderBell />
+            <Button variant="outline" onClick={handleLogout}>Sair</Button>
           </div>
         </div>
+
+        <MetricsDashboard />
 
         {/* Search & Filters */}
         <div className="mb-6">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input placeholder="Buscar por número, cliente, CNPJ ou status..." value={searchTerm} onChange={handleSearchChange} className="pl-10 pr-10 bg-white" />
+            <Input placeholder="Buscar por número, cliente, CNPJ ou status..." value={searchTerm} onChange={handleSearchChange} className="pl-10 pr-10 bg-white w-167" />
             {searchTerm && <button onClick={clearSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
           </div>
           <div className="flex items-center gap-2 mt-3">

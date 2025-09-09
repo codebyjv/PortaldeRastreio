@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { OrderDocument } from '../types/order';
 import { SupabaseService } from '../services/supabaseService';
 import { useIsAdminRoute } from '../hooks/useIsAdminRoute';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FileUpload } from './FileUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { Switch } from './ui/switch';
@@ -13,6 +13,8 @@ import { Label } from './ui/label';
 
 interface DocumentsSectionProps {
   orderId: string;
+  orderNumber: string;
+  customerName: string;
   onDeleteDocument?: (documentId: string) => void;
 }
 
@@ -43,11 +45,7 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
 
   const allDocuments = [DEFAULT_MANUAL, ...documents];
 
-  useEffect(() => {
-    loadDocuments();
-  }, [orderId, showArchived]);
-
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     setLoading(true);
     try {
       const docs = await SupabaseService.getOrderDocuments(orderId, showArchived);
@@ -57,7 +55,11 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId, showArchived]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
 
   const handleUploadComplete = () => {
     loadDocuments();
@@ -103,9 +105,9 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
 
     return (
       <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-        <DialogContent className="max-w-4xl h-[90vh]">
+        <DialogContent className="w-full max-w-6xl h-[90vh] flex flex-col">
           <DialogHeader><DialogTitle>{previewDoc.original_name}</DialogTitle></DialogHeader>
-          <div className="h-full w-full flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
+          <div className="flex-grow w-full flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
             {isImage ? (
               <img src={previewDoc.download_url} alt={previewDoc.original_name} className="max-h-full max-w-full object-contain" />
             ) : isPdf ? (
@@ -114,7 +116,7 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
               <div className="text-center"><File className="w-24 h-24 text-gray-400 mx-auto mb-4" /><p className="text-lg font-medium">Preview não disponível</p><p className="text-gray-500">Este tipo de arquivo não pode ser exibido.</p></div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <DialogClose asChild><Button variant="outline">Fechar</Button></DialogClose>
             <Button onClick={() => window.open(previewDoc.download_url, '_blank')}><Download className="w-4 h-4 mr-2" />Download</Button>
           </DialogFooter>
