@@ -1,6 +1,6 @@
 // services/supabaseService.ts
 import { supabase } from '../lib/supabase'
-import { Order, OrderDocument, ActionLog, DashboardMetrics, ReminderNotification } from '../types/order'
+import { Order, OrderDocument, ActionLog, DashboardMetrics, Notification } from '../types/order'
 
 // Helper interno para registrar ações. Não é exportado.
 const _logAction = async (action: string, orderId: string | null, details?: object) => {
@@ -199,9 +199,9 @@ export const SupabaseService = {
   },
 
   // ===== NOTIFICAÇÕES / LEMBRETES =====
-  async getUnreadNotifications(): Promise<ReminderNotification[]> { // ReminderNotification[]
+  async getUnreadNotifications(): Promise<Notification[]> { // ReminderNotification[]
     const { data, error } = await supabase
-      .from('reminders') // Assuming the table is named 'reminders'
+      .from('notifications') // Assuming the table is named 'reminders'
       .select('*')
       .eq('is_read', false)
       .order('created_at', { ascending: false });
@@ -215,7 +215,7 @@ export const SupabaseService = {
 
   async markNotificationAsRead(notificationId: number): Promise<boolean> {
     const { data, error } = await supabase
-      .from('reminders')
+      .from('notifications')
       .update({ is_read: true })
       .eq('id', notificationId)
       .select(); // select() para que o rpc retorne algo
@@ -234,7 +234,7 @@ export const SupabaseService = {
 
   async markAllNotificationsAsRead(): Promise<boolean> {
     const { data, error } = await supabase
-      .from('reminders')
+      .from('notifications')
       .update({ is_read: true })
       .eq('is_read', false)
       .select(); // select() para que o rpc retorne algo

@@ -21,7 +21,7 @@ export const MetricsDashboard = () => {
     const fetchMetrics = async () => {
       try {
         const data = await SupabaseService.getDashboardMetrics();
-        setMetrics(data);
+        setMetrics((data as unknown) as DashboardMetrics);
       } catch (error) {
         console.error('Falha ao carregar métricas:', error);
       } finally {
@@ -57,20 +57,20 @@ export const MetricsDashboard = () => {
     <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Visão Geral</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="border border-green-600">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Pedidos Ativos</CardTitle>
-                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                    <Briefcase className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{metrics.active_orders_count}</div>
                     <p className="text-xs text-muted-foreground">Pedidos não finalizados</p>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="border border-amber-400">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Doc. Pendentes</CardTitle>
-                    <FileWarning className="h-4 w-4 text-muted-foreground" />
+                    <FileWarning className="h-4 w-4 text-amber-400" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{metrics.pending_documents_count}</div>

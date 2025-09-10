@@ -56,7 +56,7 @@ export interface DashboardMetrics {
   average_delivery_time: number;
 }
 
-export interface ReminderNotification {
+export interface Notification {
   id: number;
   created_at: string;
   message: string;

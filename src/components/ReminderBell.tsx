@@ -3,10 +3,10 @@ import { Bell, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { SupabaseService } from '../services/supabaseService';
-import { ReminderNotification } from '../types/order';
+import { Notification } from '../types/order';
 
 export const ReminderBell = () => {
-  const [notifications, setNotifications] = useState<ReminderNotification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   const fetchNotifications = async () => {

@@ -147,7 +147,7 @@ export const AdminDashboard = () => {
         <div className="mb-6">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input placeholder="Buscar por número, cliente, CNPJ ou status..." value={searchTerm} onChange={handleSearchChange} className="pl-10 pr-10 bg-white w-167" />
+            <Input placeholder="Buscar por número, cliente, CNPJ ou status..." value={searchTerm} onChange={handleSearchChange} className="pl-10 pr-10 bg-white shadow-sm w-167" />
             {searchTerm && <button onClick={clearSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>}
           </div>
           <div className="flex items-center gap-2 mt-3">

@@ -1,11 +1,9 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../src/components/ui/accordion';
 import { HelpCircle } from 'lucide-react';
 import { faqs } from '../src/lib/faqData';
-import { Layout } from '../src/components/Layout';
 
 export const FAQPage = () => {
     return (
-      <Layout>
         <div className="bg-gray-50/90">
             <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:py-20 lg:px-8">
                 <div className="text-center mb-12">
@@ -34,7 +32,6 @@ export const FAQPage = () => {
                 </div>
             </div>
         </div>
-      </Layout>
     );
 };
 
