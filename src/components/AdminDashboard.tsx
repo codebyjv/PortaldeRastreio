@@ -68,6 +68,14 @@ export const AdminDashboard = () => {
     try {
       const ordersData = await SupabaseService.getOrders();
       setOrders(ordersData);
+      if (selectedOrder) {
+        const updatedSelectedOrder = ordersData.find(o => o.id === selectedOrder.id);
+        if (updatedSelectedOrder) {
+          setSelectedOrder(updatedSelectedOrder);
+        } else {
+          setSelectedOrder(null);
+        }
+      }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
     } finally {
