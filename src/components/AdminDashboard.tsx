@@ -103,9 +103,7 @@ export const AdminDashboard = () => {
     setSearchTerm('');
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  
 
   if (loading) {
     return (
@@ -123,14 +121,11 @@ export const AdminDashboard = () => {
   return (
     <Layout>
       <div className="p-6 max-w-8xl mx-auto">
-        {/* ===== New Unified Header ===== */}
+        {/* ===== Page Header ===== */}
         <div className="flex justify-between items-center mb-6">
-          {/* Left Side: Title */}
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Painel Administrativo</h1>
           </div>
-
-          {/* Right Side: Actions */}
           <div className="flex items-center gap-4">
             <Button onClick={() => setShowImporter(true)} variant="outline"><Upload className="w-4 h-4 mr-2" />Importar</Button>
             {showImporter && (
@@ -139,13 +134,6 @@ export const AdminDashboard = () => {
               </div>
             )}
             <Button onClick={() => setShowForm(!showForm)}>{showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}{showForm ? 'Fechar' : 'Novo Pedido'}</Button>
-            
-            {/* Separator */}
-            <div className="w-px h-6 bg-gray-300 mx-2"></div>
-
-            {/* Moved buttons */}
-            <ReminderBell />
-            <Button variant="outline" onClick={handleLogout}>Sair</Button>
           </div>
         </div>
 

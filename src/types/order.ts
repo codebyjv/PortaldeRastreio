@@ -1,3 +1,16 @@
+export interface EnrichedOrderItem extends OrderItem {
+  orders: Order;
+}
+
+export interface OrderItem {
+  id: number;
+  order_id: string;
+  product_description: string;
+  capacity?: string | null;
+  certificate_type?: 'IPEM' | 'RBC' | null;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   order_number: string;
@@ -13,6 +26,14 @@ export interface Order {
   tracking_code?: string;         // Código de rastreio
   shipping_method?: 'PAC' | 'Sedex' | string; // Método de envio
   collection_number?: string;     // Número da coleta
+  items?: OrderItem[];
+}
+
+export interface IpemAssessment {
+  id: number;
+  created_at: string;
+  assessment_date: string;
+  notes?: string | null;
 }
 
 export interface OrderDocument {

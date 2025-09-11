@@ -189,3 +189,23 @@
 html {
   font-size: var(--font-size);
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background-color: white !important;
+  }
+  .printable-card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .printable-content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}

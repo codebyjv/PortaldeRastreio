@@ -1,11 +1,10 @@
-// components/ExcelImporter.tsx
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ChevronsRight, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, ChevronsRight, X, CornerRightDown } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { SupabaseService } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
-import { Order } from '../types/order';
+import { Order, OrderItem } from '../types/order';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
@@ -16,7 +15,9 @@ interface ExcelImporterProps {
 
 type ValidationStatus = 'Válido' | 'Inválido' | 'Duplicado';
 
+// O item de preview agora é um pedido completo com seus itens
 interface PreviewItem extends Partial<Order> {
+  items: Partial<OrderItem>[];
   validationStatus: ValidationStatus;
   validationErrors: string[];
 }
@@ -47,7 +48,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
+      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as string[][];
       
       validateData(data, existingOrderNumbers);
       setView('preview');
@@ -60,44 +61,72 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
     }
   };
 
-  const validateData = (data: unknown[][], existingOrderNumbers: Set<string>) => {
+  const validateData = (data: string[][], existingOrderNumbers: Set<string>) => {
     const validatedItems: PreviewItem[] = [];
-    const orderPattern = /(\d+)\s*-\s*([^-]+)\s*-\s*([\d./]+-?\d*)\s*-\s*(\d{2}\/\d{2}\/\d{4})/;
+    let currentOrder: PreviewItem | null = null;
+
+    const orderPattern = /^\s*(\d+)\s*-\s*([^-]+?)\s*-\s*([\d./-]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})/;
+    const itemPattern = /^\s*(Peso Padrão.*)/;
 
     for (const row of data) {
-      if (!row || row.length < 1) continue;
+      const cellValue = row[0] || ''; // Processar apenas a primeira coluna
 
-      for (const cellValue of row) {
-        if (cellValue && typeof cellValue === 'string' && orderPattern.test(cellValue)) {
-          const match = cellValue.trim().match(orderPattern);
-          if (!match) continue;
+      const orderMatch = cellValue.match(orderPattern);
+      const itemMatch = cellValue.match(itemPattern);
 
-          const orderData: Partial<Order> = {
-            order_number: match[1]?.trim(),
-            customer_name: match[2]?.trim(),
-            cnpj: match[3]?.trim().replace(/\D/g, ''),
-            order_date: convertDate(match[4]?.trim()),
-          };
-
-          const validationErrors: string[] = [];
-          if (!orderData.order_number) validationErrors.push('Nº do pedido ausente.');
-          if (!orderData.customer_name) validationErrors.push('Nome do cliente ausente.');
-          if (!orderData.cnpj) validationErrors.push('CNPJ ausente.');
-          if (!orderData.order_date) validationErrors.push('Data do pedido inválida.');
-
-          let validationStatus: ValidationStatus = 'Válido';
-          if (validationErrors.length > 0) {
-            validationStatus = 'Inválido';
-          } else if (existingOrderNumbers.has(orderData.order_number!)) {
-            validationStatus = 'Duplicado';
-            validationErrors.push('Este número de pedido já existe no sistema.');
-          }
-
-          validatedItems.push({ ...orderData, validationStatus, validationErrors });
-          break; // Process only first match per row
+      if (orderMatch) {
+        // Se encontrou um novo pedido, salve o anterior (se existir)
+        if (currentOrder) {
+          validatedItems.push(currentOrder);
         }
+
+        // Inicia um novo pedido
+        const orderNumber = orderMatch[1]?.trim();
+        const validationErrors: string[] = [];
+        let validationStatus: ValidationStatus = 'Válido';
+
+        if (!orderNumber) {
+          validationErrors.push('Nº do pedido ausente.');
+          validationStatus = 'Inválido';
+        } else if (existingOrderNumbers.has(orderNumber)) {
+          validationStatus = 'Duplicado';
+          validationErrors.push('Este número de pedido já existe no sistema.');
+        }
+
+        currentOrder = {
+          order_number: orderNumber,
+          customer_name: orderMatch[2]?.trim(),
+          cnpj: orderMatch[3]?.trim().replace(/\D/g, ''),
+          order_date: convertDate(orderMatch[4]?.trim()),
+          items: [],
+          validationStatus,
+          validationErrors,
+        };
+
+      } else if (itemMatch && currentOrder) {
+        // Se encontrou um item e está dentro de um pedido
+        const description = itemMatch[1].trim();
+
+        const capacityPattern = /Cap\.\s*([^-\s]+)/i;
+        const certPattern = /-\s*(IPEM|RBC)/i;
+
+        const capacityMatch = description.match(capacityPattern);
+        const certMatch = description.match(certPattern);
+
+        const item: Partial<OrderItem> = {
+          product_description: description,
+          capacity: capacityMatch ? capacityMatch[1] : null,
+          certificate_type: certMatch ? (certMatch[1].toUpperCase() as 'IPEM' | 'RBC') : null,
+        };
+        currentOrder.items.push(item);
       }
     }
+
+    // Adiciona o último pedido processado
+    if (currentOrder) {
+      validatedItems.push(currentOrder);
+    }
+
     setPreviewData(validatedItems);
   };
 
@@ -108,16 +137,8 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
 
     for (const item of validItems) {
       try {
-        const orderPayload: Omit<Order, 'id' | 'created_at' | 'expiration_date'> = {
-          order_number: item.order_number!,
-          customer_name: item.customer_name!,
-          cnpj: item.cnpj!,
-          order_date: item.order_date!,
-          status: 'Confirmado',
-          total_value: 0, // Valor padrão
-          expected_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        };
-        await SupabaseService.createOrder(orderPayload);
+        // A função createOrder precisa ser adaptada para receber os itens
+        await SupabaseService.createOrder(item as Order);
         successCount++;
       } catch (error) {
         console.error(`Falha ao importar pedido ${item.order_number}:`, error);
@@ -136,6 +157,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
   };
 
   const convertDate = (dateString: string): string => {
+    if (!dateString) return '';
     const parts = dateString.split('/');
     if (parts.length === 3) {
       return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
@@ -170,29 +192,60 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
   const renderPreviewView = () => (
     <div>
       <h4 className="font-medium mb-2">Pré-visualização da Importação</h4>
-      <p className="text-sm text-muted-foreground mb-4">{previewData.length} registros encontrados. Apenas os itens marcados como &apos;Válido&apos; serão importados.</p>
-      <div className="max-h-96 overflow-y-auto border rounded-md">
+      <p className="text-sm text-muted-foreground mb-4">{previewData.length} pedidos encontrados. Apenas os itens marcados como &apos;Válido&apos; serão importados.</p>
+      <div className="max-h-[60vh] overflow-y-auto border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Status</TableHead>
+              <TableHead className="w-[120px]">Status</TableHead>
               <TableHead>Nº Pedido</TableHead>
               <TableHead>Cliente</TableHead>
-              <TableHead>Detalhes</TableHead>
+              <TableHead>Itens</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {previewData.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>
-                  <Badge variant={item.validationStatus === 'Válido' ? 'default' : 'destructive'}>{
-                    item.validationStatus
-                  }</Badge>
-                </TableCell>
-                <TableCell>{item.order_number || '-'}</TableCell>
-                <TableCell>{item.customer_name || '-'}</TableCell>
-                <TableCell className="text-xs text-red-600">{item.validationErrors.join(', ')}</TableCell>
-              </TableRow>
+              <React.Fragment key={index}>
+                <TableRow>
+                  <TableCell>
+                    <Badge variant={item.validationStatus === 'Válido' ? 'default' : 'destructive'}>{
+                      item.validationStatus
+                    }</Badge>
+                    {item.validationErrors.length > 0 && <p className="text-xs text-red-600 mt-1">{item.validationErrors.join(', ')}</p>}
+                  </TableCell>
+                  <TableCell>{item.order_number || '-'}</TableCell>
+                  <TableCell>{item.customer_name || '-'}</TableCell>
+                  <TableCell>{item.items.length} item(s)</TableCell>
+                </TableRow>
+                {item.items.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="p-0">
+                      <div className="p-2 bg-slate-50">
+                        <Table>
+                          <TableBody>
+                            {item.items.map((orderItem, itemIndex) => (
+                              <TableRow key={itemIndex} className="text-xs">
+                                <TableCell className="w-[120px]"></TableCell>
+                                <TableCell colSpan={2} className="flex items-center">
+                                  <CornerRightDown className="w-4 h-4 mr-2 text-gray-400" />
+                                  {orderItem.product_description}
+                                </TableCell>
+                                <TableCell>
+                                  {orderItem.certificate_type && (
+                                    <Badge variant={orderItem.certificate_type === 'IPEM' ? 'secondary' : 'outline'}>
+                                      {orderItem.certificate_type}
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>

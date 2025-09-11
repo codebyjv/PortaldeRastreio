@@ -1,6 +1,6 @@
 // services/supabaseService.ts
 import { supabase } from '../lib/supabase'
-import { Order, OrderDocument, ActionLog, DashboardMetrics, Notification } from '../types/order'
+import { Order, OrderDocument, ActionLog, DashboardMetrics, Notification, EnrichedOrderItem, IpemAssessment } from '../types/order'
 
 // Helper interno para registrar ações. Não é exportado.
 const _logAction = async (action: string, orderId: string | null, details?: object) => {
@@ -22,27 +22,47 @@ const _logAction = async (action: string, orderId: string | null, details?: obje
 
 export const SupabaseService = {
   // ===== CRUD DE PEDIDOS =====
-  async createOrder(orderData: Omit<Order, 'id' | 'created_at' | 'expiration_date'>): Promise<Order> {
-    const { data, error } = await supabase
-        .from('orders')
-        .insert([{
-        order_number: orderData.order_number,
-        customer_name: orderData.customer_name,
-        order_date: orderData.order_date,
-        status: orderData.status,
-        cnpj: orderData.cnpj,
-        total_value: orderData.total_value,
-        expected_delivery: orderData.expected_delivery,
-        created_at: new Date().toISOString(),
-        expiration_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        }])
-        .select()
-        .single()
+  async createOrder(orderData: Partial<Order>): Promise<Order> {
+    const { items, ...orderFields } = orderData;
 
-    if (error) throw new Error(`Erro ao criar pedido: ${error.message}`)
+    const payload = {
+      order_number: orderFields.order_number,
+      customer_name: orderFields.customer_name,
+      order_date: orderFields.order_date,
+      status: orderFields.status || 'Confirmado',
+      cnpj: orderFields.cnpj,
+      total_value: orderFields.total_value || 0,
+      expected_delivery: orderFields.expected_delivery || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date().toISOString(),
+      expiration_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    };
+
+    const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert([payload])
+        .select()
+        .single();
+
+    if (orderError) throw new Error(`Erro ao criar pedido: ${orderError.message}`);
+    if (!newOrder) throw new Error('Falha ao criar pedido, nenhum dado retornado.');
+
+    if (items && items.length > 0) {
+      const itemsToInsert = items.map(item => ({
+        order_id: newOrder.id,
+        product_description: item.product_description,
+        capacity: item.capacity,
+        certificate_type: item.certificate_type,
+      }));
+
+      const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
+
+      if (itemsError) {
+        console.error(`ATENÇÃO: Pedido ${newOrder.order_number} foi criado, mas falhou ao inserir seus itens.`, itemsError);
+      }
+    }
     
-    await _logAction(`Pedido #${data.order_number} criado.`, data.id);
-    return data
+    await _logAction(`Pedido #${newOrder.order_number} criado com ${items?.length || 0} itens.`, newOrder.id);
+    return newOrder;
   },
 
   async getOrders(): Promise<Order[]> {
@@ -249,6 +269,88 @@ export const SupabaseService = {
     }
 
     return data !== null;
+  },
+
+  // ===== IPEM & RBC =====
+  async getPendingIpemItems(): Promise<EnrichedOrderItem[]> {
+    const { data: assessedItems, error: assessedItemsError } = await supabase
+      .from('ipem_assessment_items')
+      .select('item_id');
+
+    if (assessedItemsError) {
+      console.error('Erro ao buscar itens já aferidos:', assessedItemsError);
+      return [];
+    }
+    const assessedItemIds = assessedItems.map(item => item.item_id);
+
+    let query = supabase
+      .from('order_items')
+      .select('*, orders(*)')
+      .eq('certificate_type', 'IPEM');
+
+    if (assessedItemIds.length > 0) {
+      query = query.not('id', 'in', `(${assessedItemIds.join(',')})`);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao buscar itens IPEM pendentes:', error);
+      return [];
+    }
+
+    return data as EnrichedOrderItem[];
+  },
+
+  async getIpemAssessments(): Promise<IpemAssessment[]> {
+    const { data, error } = await supabase
+      .from('ipem_assessments')
+      .select('*')
+      .order('assessment_date', { ascending: false });
+    if (error) {
+      console.error('Erro ao buscar aferições IPEM:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async createIpemAssessment(assessmentData: Pick<IpemAssessment, 'assessment_date' | 'notes'>): Promise<IpemAssessment> {
+    const { data, error } = await supabase
+      .from('ipem_assessments')
+      .insert(assessmentData)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async addItemsToAssessment(assessmentId: number, itemIds: number[]): Promise<void> {
+    const records = itemIds.map(id => ({ assessment_id: assessmentId, item_id: id }));
+    const { error } = await supabase.from('ipem_assessment_items').insert(records);
+    if (error) throw error;
+  },
+
+  async getAssessmentItems(assessmentId: number): Promise<EnrichedOrderItem[]> {
+    const { data, error } = await supabase
+      .from('ipem_assessment_items')
+      .select('order_items(*, orders(*))')
+      .eq('assessment_id', assessmentId);
+
+    if (error) {
+      console.error(`Erro ao buscar itens para a aferição ${assessmentId}:`, error);
+      return [];
+    }
+    // A estrutura retornada é { order_items: EnrichedOrderItem }[], então precisamos achatar
+    return data.map(item => item.order_items) as EnrichedOrderItem[];
+  },
+
+  async removeItemFromAssessment(assessmentId: number, itemId: number): Promise<void> {
+    const { error } = await supabase
+      .from('ipem_assessment_items')
+      .delete()
+      .eq('assessment_id', assessmentId)
+      .eq('item_id', itemId);
+    if (error) throw error;
   },
 
   // ===== DASHBOARD & LOGS =====

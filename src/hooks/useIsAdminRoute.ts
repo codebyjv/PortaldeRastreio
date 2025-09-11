@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 
-export const useIsAdminRoute = () => {
+export const useIsAdminPage = () => {
   const location = useLocation();
-  return location.pathname.startsWith('/admin');
+  const adminPaths = ['/admin', '/ipem', '/rbc'];
+  return adminPaths.some(path => location.pathname.startsWith(path));
 };
