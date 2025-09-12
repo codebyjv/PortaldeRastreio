@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { OrderDocument } from '../types/order';
 import { SupabaseService } from '../services/supabaseService';
-import { useIsAdminRoute } from '../hooks/useIsAdminRoute';
+import { useIsAdminPage } from '../hooks/useIsAdminRoute';
 import { useState, useEffect, useCallback } from 'react';
 import { FileUpload } from './FileUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
@@ -41,7 +41,7 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
   const [previewDoc, setPreviewDoc] = useState<OrderDocument | null>(null);
   const [showArchived, setShowArchived] = useState(false);
 
-  const isAdminRoute = useIsAdminRoute();
+  const isAdminRoute = useIsAdminPage();
 
   const allDocuments = [DEFAULT_MANUAL, ...documents];
 

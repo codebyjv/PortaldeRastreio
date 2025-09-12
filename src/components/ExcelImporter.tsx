@@ -15,8 +15,7 @@ interface ExcelImporterProps {
 
 type ValidationStatus = 'Válido' | 'Inválido' | 'Duplicado';
 
-// O item de preview agora é um pedido completo com seus itens
-interface PreviewItem extends Partial<Order> {
+interface PreviewItem extends Omit<Partial<Order>, 'items'> {
   items: Partial<OrderItem>[];
   validationStatus: ValidationStatus;
   validationErrors: string[];
@@ -65,66 +64,95 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
     const validatedItems: PreviewItem[] = [];
     let currentOrder: PreviewItem | null = null;
 
-    const orderPattern = /^\s*(\d+)\s*-\s*([^-]+?)\s*-\s*([\d./-]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})/;
-    const itemPattern = /^\s*(Peso Padrão.*)/;
+    const orderPattern = /^\s*(\d+)\s*-\s*(.*?)\s*-\s*([\d.-]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*Status do Pedido:/;
+    const ignorePatterns = [
+        /^Página/i,
+        /^Relação de Vendas/,
+        /^Produto/,
+        /^Unidade/,
+        /^Quant/,
+        /^Vl\.Unitário/,
+        /^Vl\.Total/,
+    ];
+    const summaryKeywords = ['Total Bruto:', 'Desconto(-):', 'Acréscimo(+):', 'Imposto(+):', 'Frete(+):', 'Total Líquido:', 'Total Liquido:'];
 
     for (const row of data) {
-      const cellValue = row[0] || ''; // Processar apenas a primeira coluna
+        const cellValue = row.join(' ');
+        if (!cellValue.trim()) continue;
 
-      const orderMatch = cellValue.match(orderPattern);
-      const itemMatch = cellValue.match(itemPattern);
-
-      if (orderMatch) {
-        // Se encontrou um novo pedido, salve o anterior (se existir)
-        if (currentOrder) {
-          validatedItems.push(currentOrder);
+        if (ignorePatterns.some(p => p.test(cellValue.trim()))) {
+            continue;
         }
 
-        // Inicia um novo pedido
-        const orderNumber = orderMatch[1]?.trim();
-        const validationErrors: string[] = [];
-        let validationStatus: ValidationStatus = 'Válido';
+        const orderMatch = cellValue.match(orderPattern);
 
-        if (!orderNumber) {
-          validationErrors.push('Nº do pedido ausente.');
-          validationStatus = 'Inválido';
-        } else if (existingOrderNumbers.has(orderNumber)) {
-          validationStatus = 'Duplicado';
-          validationErrors.push('Este número de pedido já existe no sistema.');
+        if (orderMatch) {
+            if (currentOrder) {
+                validatedItems.push(currentOrder);
+            }
+            
+            const orderNumber = orderMatch[1]?.trim();
+            const validationErrors: string[] = [];
+            let validationStatus: ValidationStatus = 'Válido';
+
+            if (!orderNumber) {
+                validationErrors.push('Nº do pedido ausente.');
+                validationStatus = 'Inválido';
+            } else if (existingOrderNumbers.has(orderNumber)) {
+                validationStatus = 'Duplicado';
+                validationErrors.push('Este número de pedido já existe no sistema.');
+            }
+
+            currentOrder = {
+                order_number: orderNumber,
+                customer_name: orderMatch[2]?.trim(),
+                cnpj: orderMatch[3]?.trim().replace(/\D/g, ''),
+                order_date: convertDate(orderMatch[4]?.trim()),
+                items: [],
+                validationStatus,
+                validationErrors,
+            };
+        } else if (currentOrder && cellValue.startsWith('  ')) { 
+            const fullLine = cellValue.trim();
+
+            if (summaryKeywords.some(k => fullLine.startsWith(k))) {
+                continue;
+            }
+
+            let description = fullLine;
+            let quantity = 1;
+
+            const qtyPattern = /^(.*?)\s{2,}([^\s]+)\s+([\d,.]+)\s+R\$/;
+            const qtyMatch = fullLine.match(qtyPattern);
+
+            if (qtyMatch) {
+                description = qtyMatch[1].trim();
+                const qtyParsed = parseFloat(qtyMatch[3]);
+                if (!isNaN(qtyParsed)) {
+                    quantity = qtyParsed;
+                }
+            }
+            
+            const capacityPattern = /Cap[.:]?\s*([\w\s.-]+)/i;
+            const certPattern = /(IPEM|RBC)/i;
+
+            const capacityMatch = description.match(capacityPattern);
+            const certMatch = description.match(certPattern);
+
+            const finalDescription = description.replace(capacityPattern, '').replace(/-\s*$/, '').trim();
+
+            const item: Partial<OrderItem> = {
+              product_description: finalDescription,
+              quantity: quantity,
+              capacity: capacityMatch ? capacityMatch[1].trim() : null,
+              certificate_type: certMatch ? (certMatch[1].toUpperCase() as 'IPEM' | 'RBC') : null,
+            };
+            currentOrder.items.push(item);
         }
-
-        currentOrder = {
-          order_number: orderNumber,
-          customer_name: orderMatch[2]?.trim(),
-          cnpj: orderMatch[3]?.trim().replace(/\D/g, ''),
-          order_date: convertDate(orderMatch[4]?.trim()),
-          items: [],
-          validationStatus,
-          validationErrors,
-        };
-
-      } else if (itemMatch && currentOrder) {
-        // Se encontrou um item e está dentro de um pedido
-        const description = itemMatch[1].trim();
-
-        const capacityPattern = /Cap\.\s*([^-\s]+)/i;
-        const certPattern = /-\s*(IPEM|RBC)/i;
-
-        const capacityMatch = description.match(capacityPattern);
-        const certMatch = description.match(certPattern);
-
-        const item: Partial<OrderItem> = {
-          product_description: description,
-          capacity: capacityMatch ? capacityMatch[1] : null,
-          certificate_type: certMatch ? (certMatch[1].toUpperCase() as 'IPEM' | 'RBC') : null,
-        };
-        currentOrder.items.push(item);
-      }
     }
 
-    // Adiciona o último pedido processado
     if (currentOrder) {
-      validatedItems.push(currentOrder);
+        validatedItems.push(currentOrder);
     }
 
     setPreviewData(validatedItems);
@@ -137,7 +165,6 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
 
     for (const item of validItems) {
       try {
-        // A função createOrder precisa ser adaptada para receber os itens
         await SupabaseService.createOrder(item as Order);
         successCount++;
       } catch (error) {
@@ -222,13 +249,30 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
                     <TableCell colSpan={4} className="p-0">
                       <div className="p-2 bg-slate-50">
                         <Table>
+                          <TableHeader>
+                            <TableRow className="text-xs">
+                              <TableHead className="w-[120px]"></TableHead>
+                              <TableHead>Descrição</TableHead>
+                              <TableHead className="w-[120px]">Capacidade</TableHead>
+                              <TableHead className="w-[100px]">Quantidade</TableHead>
+                              <TableHead className="w-[100px]">Certificado</TableHead>
+                            </TableRow>
+                          </TableHeader>
                           <TableBody>
                             {item.items.map((orderItem, itemIndex) => (
                               <TableRow key={itemIndex} className="text-xs">
                                 <TableCell className="w-[120px]"></TableCell>
-                                <TableCell colSpan={2} className="flex items-center">
-                                  <CornerRightDown className="w-4 h-4 mr-2 text-gray-400" />
-                                  {orderItem.product_description}
+                                <TableCell>
+                                  <span className="flex items-center">
+                                    <CornerRightDown className="w-4 h-4 mr-2 text-gray-400" />
+                                    {orderItem.product_description}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  {orderItem.capacity && <Badge variant="outline">{orderItem.capacity}</Badge>}
+                                </TableCell>
+                                <TableCell>
+                                  {orderItem.quantity && <Badge>{orderItem.quantity}</Badge>}
                                 </TableCell>
                                 <TableCell>
                                   {orderItem.certificate_type && (

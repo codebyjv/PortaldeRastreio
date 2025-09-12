@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, X, Upload } from 'lucide-react';
-import { ReminderBell } from './ReminderBell';
+// import { ReminderBell } from './ReminderBell';
 import { MetricsDashboard } from './MetricsDashboard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';

@@ -6,6 +6,7 @@ export interface OrderItem {
   id: number;
   order_id: string;
   product_description: string;
+  quantity?: number | null;
   capacity?: string | null;
   certificate_type?: 'IPEM' | 'RBC' | null;
   created_at: string;

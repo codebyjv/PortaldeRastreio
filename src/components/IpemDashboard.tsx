@@ -156,7 +156,7 @@ export const IpemDashboard = () => {
           <CardContent className="space-y-4 printable-content">
             <div className="flex flex-wrap items-center gap-4 p-4 border rounded-lg bg-slate-50 no-print">
               <div className="flex-1 min-w-[200px]">
-                <label className="text-sm font-medium mb-1 block">Selecionar Aferição</label>
+                <label htmlFor="assessment-select" className="text-sm font-medium mb-1 block">Selecionar Aferição</label>
                 <Select value={selectedAssessmentId} onValueChange={setSelectedAssessmentId}>
                   <SelectTrigger><SelectValue placeholder="Escolha uma aferição..." /></SelectTrigger>
                   <SelectContent>
@@ -166,7 +166,7 @@ export const IpemDashboard = () => {
               </div>
               <div className="text-center text-sm text-gray-500">OU</div>
               <div className="flex-1 min-w-[200px]">
-                <label className="text-sm font-medium mb-1 block">Criar Nova Aferição</label>
+                <label htmlFor="new-assessment-date" className="text-sm font-medium mb-1 block">Criar Nova Aferição</label>
                 <div className="flex gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -177,9 +177,9 @@ export const IpemDashboard = () => {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={newAssessmentDate} onSelect={setNewAssessmentDate} initialFocus /></PopoverContent>
                   </Popover>
-                  <Button onClick={handleCreateAssessment} disabled={!newAssessmentDate}><PlusCircle className="w-4 h-4 mr-2"/> Criar</Button>
                 </div>
               </div>
+              <Button className="relative top-3" onClick={handleCreateAssessment} disabled={!newAssessmentDate}><PlusCircle className="w-4 h-4 mr-2"/> Criar</Button>
             </div>
 
             {loadingAssessmentItems ? <p>Carregando itens da aferição...</p> : assessmentItems.length === 0 ? (
