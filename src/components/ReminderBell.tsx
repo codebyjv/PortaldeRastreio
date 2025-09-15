@@ -4,23 +4,37 @@ import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { SupabaseService } from '../services/supabaseService';
 import { Notification } from '../types/order';
+import { useNotifications } from '../hooks/useNotifications';
 
 export const ReminderBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const { requestPermission, showNotification, permission } = useNotifications();
 
   const fetchNotifications = async () => {
     const data = await SupabaseService.getUnreadNotifications();
+    
+    // Show browser notifications for new notifications
+    if (permission === 'granted') {
+      const newNotifications = data.filter(n => !notifications.some(existing => existing.id === n.id));
+      newNotifications.forEach(n => {
+        showNotification('Novo Lembrete', { body: n.message, tag: `notification-${n.id}` });
+      });
+    }
+
     setNotifications(data);
   };
 
   useEffect(() => {
+    // Request permission on component mount
+    requestPermission();
+
     fetchNotifications();
 
     // Opcional: buscar notificações a cada 30 segundos
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [requestPermission]);
 
   const handleMarkAsRead = async (id: number) => {
     await SupabaseService.markNotificationAsRead(id);
