@@ -107,18 +107,19 @@ export const IpemDashboard = () => {
   };
 
   const isAllSelected = pendingItems.length > 0 && selectedPendingItems.length === pendingItems.length;
+  const selectedAssessment = assessments.find(a => a.id.toString() === selectedAssessmentId);
 
   return (
     <Layout>
-      <div className="space-y-6 p-4 md:p-6">
-        <div className="flex justify-between items-start no-print">
+      <div className="space-y-6 p-4 md:p-6 no-print">
+        <div className="flex justify-between items-start">
           <h1 className="text-2xl font-bold">Gestão de Aferição IPEM</h1>
           <Button onClick={handleAddItemsToAssessment} disabled={selectedPendingItems.length === 0 || !selectedAssessmentId}>
             Adicionar {selectedPendingItems.length > 0 ? selectedPendingItems.length : ''} item(s) à Aferição
           </Button>
         </div>
 
-        <Card className="no-print">
+        <Card>
           <CardHeader>
             <CardTitle>Itens IPEM Aguardando Aferição</CardTitle>
           </CardHeader>
@@ -146,15 +147,15 @@ export const IpemDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="printable-card">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Relação de Itens para Aferição</CardTitle>
-            <Button variant="outline" size="icon" onClick={() => window.print()} className="no-print">
+            <Button variant="outline" size="icon" onClick={() => window.print()}>
               <Printer className="w-4 h-4" />
             </Button>
           </CardHeader>
-          <CardContent className="space-y-4 printable-content">
-            <div className="flex flex-wrap items-center gap-4 p-4 border rounded-lg bg-slate-50 no-print">
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center gap-4 p-4 border rounded-lg bg-slate-50">
               <div className="flex-1 min-w-[200px]">
                 <label htmlFor="assessment-select" className="text-sm font-medium mb-1 block">Selecionar Aferição</label>
                 <Select value={selectedAssessmentId} onValueChange={setSelectedAssessmentId}>
@@ -181,33 +182,40 @@ export const IpemDashboard = () => {
               </div>
               <Button className="relative top-3" onClick={handleCreateAssessment} disabled={!newAssessmentDate}><PlusCircle className="w-4 h-4 mr-2"/> Criar</Button>
             </div>
-
-            {loadingAssessmentItems ? <p>Carregando itens da aferição...</p> : assessmentItems.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Nenhum item nesta aferição. Selecione itens acima e adicione-os.</p>
-            ) : (
-              <div className="border rounded-lg overflow-hidden max-h-[50vh] overflow-y-auto printable-content">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Pedido</TableHead><TableHead>Cliente</TableHead><TableHead>Item / Descrição</TableHead><TableHead className="w-[100px]">Capacidade</TableHead><TableHead className="w-[50px] no-print"></TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {assessmentItems.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell><div className="font-medium">{item.orders.order_number}</div><div className="text-xs text-gray-500">{new Date(item.orders.order_date).toLocaleDateString()}</div></TableCell>
-                        <TableCell>{item.orders.customer_name}</TableCell>
-                        <TableCell>{item.product_description}</TableCell>
-                        <TableCell>{item.capacity && <Badge variant="secondary">{item.capacity}</Badge>}</TableCell>
-                        <TableCell className="no-print">
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
           </CardContent>
         </Card>
+      </div>
+      <div className="printable-area">
+        {selectedAssessment && (
+          <div className="mb-4 p-4">
+            <h2 className="text-lg font-semibold">Aferição de {format(new Date(selectedAssessment.assessment_date), 'dd/MM/yyyy')}</h2>
+            <p className="text-sm text-gray-600">Total de Itens: {assessmentItems.length}</p>
+          </div>
+        )}
+        {loadingAssessmentItems ? <p>Carregando itens da aferição...</p> : assessmentItems.length === 0 ? (
+          <p className="text-center text-gray-500 py-8">Nenhum item nesta aferição.</p>
+        ) : (
+          <div className="border rounded-lg overflow-hidden max-h-[50vh] overflow-y-auto p-4 mb-12 print-no-scroll">
+            <Table>
+              <TableHeader><TableRow><TableHead>Pedido</TableHead><TableHead>Cliente</TableHead><TableHead>Item / Descrição</TableHead><TableHead className="w-[100px]">Capacidade</TableHead><TableHead className="w-[50px] no-print"></TableHead></TableRow></TableHeader>
+              <TableBody>
+                {assessmentItems.map(item => (
+                  <TableRow key={item.id}>
+                    <TableCell><div className="font-medium">{item.orders.order_number}</div><div className="text-xs text-gray-500">{new Date(item.orders.order_date).toLocaleDateString()}</div></TableCell>
+                    <TableCell>{item.orders.customer_name}</TableCell>
+                    <TableCell>{item.product_description}</TableCell>
+                    <TableCell>{item.capacity && <Badge variant="secondary">{item.capacity}</Badge>}</TableCell>
+                    <TableCell className="no-print">
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </Layout>
   );

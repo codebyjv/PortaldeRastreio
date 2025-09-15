@@ -36,6 +36,8 @@ export const OrderInfoCard = ({ order, onUpdate }: OrderInfoCardProps) => {
     }
   };
 
+  const [customerName, cnpj] = (order.customer_name || '-').split(/\s+-\s+/);
+
   return (
     <Card>
       <CardHeader>
@@ -52,7 +54,7 @@ export const OrderInfoCard = ({ order, onUpdate }: OrderInfoCardProps) => {
             <User className="w-5 h-5 text-gray-500 mr-2" />
             <div>
               <p className="text-sm text-gray-600">Cliente</p>
-              <p className="font-semibold">{order.customer_name}</p>
+              <p className="font-semibold">{customerName}</p>
             </div>
           </div>
 
@@ -60,7 +62,7 @@ export const OrderInfoCard = ({ order, onUpdate }: OrderInfoCardProps) => {
             <FileText className="w-5 h-5 text-gray-500 mr-2" />
             <div>
               <p className="text-sm text-gray-600">CNPJ</p>
-              <p className="font-semibold">{order.cnpj}</p>
+              <p className="font-semibold">{cnpj}</p>
             </div>
           </div>
 

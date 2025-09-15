@@ -302,6 +302,58 @@ export const SupabaseService = {
     return data as EnrichedOrderItem[];
   },
 
+  async getRbcItems(): Promise<EnrichedOrderItem[]> {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('*, orders(*)')
+      .eq('certificate_type', 'RBC')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao buscar itens RBC:', error);
+      return [];
+    }
+
+    return data as EnrichedOrderItem[];
+  },
+
+  async approveRbcProposal(itemIds: number[]): Promise<void> {
+    const { error } = await supabase
+      .from('order_items')
+      .update({ 
+        proposal_approved: true,
+        proposal_approved_date: new Date().toISOString() 
+      })
+      .in('id', itemIds);
+
+    if (error) {
+      throw new Error(`Erro ao aprovar proposta RBC: ${error.message}`);
+    }
+    // Assuming order_id is available on the item to log the action
+    const { data: item } = await supabase.from('order_items').select('order_id').in('id', itemIds).limit(1).single();
+    if (item) {
+      await _logAction(`Proposta RBC para ${itemIds.length} itens aprovada.`, item.order_id);
+    }
+  },
+
+  async rejectRbcProposal(itemIds: number[]): Promise<void> {
+    const { error } = await supabase
+      .from('order_items')
+      .update({ 
+        proposal_approved: false,
+        proposal_approved_date: new Date().toISOString() 
+      })
+      .in('id', itemIds);
+
+    if (error) {
+      throw new Error(`Erro ao rejeitar proposta RBC: ${error.message}`);
+    }
+    const { data: item } = await supabase.from('order_items').select('order_id').in('id', itemIds).limit(1).single();
+    if (item) {
+      await _logAction(`Proposta RBC para ${itemIds.length} itens rejeitada.`, item.order_id);
+    }
+  },
+
   async getIpemAssessments(): Promise<IpemAssessment[]> {
     const { data, error } = await supabase
       .from('ipem_assessments')
@@ -341,7 +393,7 @@ export const SupabaseService = {
       return [];
     }
     // A estrutura retornada é { order_items: EnrichedOrderItem }[], então precisamos achatar
-    return data.map(item => item.order_items) as EnrichedOrderItem[];
+    return (data.map(item => item.order_items) as unknown) as EnrichedOrderItem[];
   },
 
   async removeItemFromAssessment(assessmentId: number, itemId: number): Promise<void> {

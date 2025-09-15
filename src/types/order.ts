@@ -1,5 +1,9 @@
 export interface EnrichedOrderItem extends OrderItem {
   orders: Order;
+  proposal_approved: boolean;
+  proposal_send_date: string;
+  proposal_approved_date: string;
+  proposal_sent_date: string;
 }
 
 export interface OrderItem {
