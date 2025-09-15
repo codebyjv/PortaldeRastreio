@@ -26,7 +26,8 @@ export const OrderInfoCard = ({ order, onUpdate }: OrderInfoCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Confirmado': return 'bg-blue-100 text-blue-800';
-      case 'Em transporte': return 'bg-yellow-100 text-yellow-800';
+      case 'Preparando': return 'bg-yellow-100 text-yellow-800';
+      case 'Em transporte': return 'bg-orange-100 text-orange-800';
       case 'Faturado': return 'bg-purple-100 text-purple-800';
       case 'Despachado': return 'bg-orange-100 text-orange-800';
       case 'Aguardando retirada': return 'bg-indigo-100 text-indigo-800';
@@ -108,7 +109,7 @@ export const OrderInfoCard = ({ order, onUpdate }: OrderInfoCardProps) => {
         <div className="pt-4 border-t">
           <p className="text-sm font-medium mb-2">Alterar Status</p>
           <div className="flex flex-wrap gap-2">
-            {['Confirmado', 'Em transporte', 'Faturado', 'Despachado', 'Aguardando retirada', 'Entregue', 'Cancelado'].map((status) => (
+            {['Confirmado', 'Preparando', 'Em transporte', 'Faturado', 'Despachado', 'Aguardando retirada', 'Entregue', 'Cancelado'].map((status) => (
               <Button
                 key={status}
                 variant={order.status === status ? 'default' : 'outline'}

@@ -64,7 +64,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
     const validatedItems: PreviewItem[] = [];
     let currentOrder: PreviewItem | null = null;
 
-    const orderPattern = /^\s*(\d+)\s*-\s*(.*?)\s*-\s*([\d.-]+)\s*-\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*Status do Pedido:/;
+    const orderPattern = /^\s*(\d+)\s*-\s*(.+?)\s*-\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*Status do Pedido:/;
     const ignorePatterns = [
         /^Página/i,
         /^Relação de Vendas/,
@@ -92,6 +92,20 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
             }
             
             const orderNumber = orderMatch[1]?.trim();
+            const customerAndCnpj = orderMatch[2]?.trim();
+            const orderDate = orderMatch[3]?.trim();
+
+            const cnpjPattern = /([0-9]{2}[\.]?[0-9]{3}[\.]?[0-9]{3}[\/]?[0-9]{4}[-]?[0-9]{2})/;
+            const cnpjMatch = customerAndCnpj.match(cnpjPattern);
+
+            let customerName = customerAndCnpj;
+            let cnpj = '';
+
+            if (cnpjMatch && cnpjMatch[0]) {
+                cnpj = cnpjMatch[0];
+                customerName = customerAndCnpj.replace(cnpj, '').replace(/\s*-\s*$/, '').trim();
+            }
+
             const validationErrors: string[] = [];
             let validationStatus: ValidationStatus = 'Válido';
 
@@ -105,9 +119,9 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
 
             currentOrder = {
                 order_number: orderNumber,
-                customer_name: orderMatch[2]?.trim(),
-                cnpj: orderMatch[3]?.trim().replace(/\D/g, ''),
-                order_date: convertDate(orderMatch[4]?.trim()),
+                customer_name: customerName,
+                cnpj: cnpj.replace(/\D/g, ''),
+                order_date: convertDate(orderDate),
                 items: [],
                 validationStatus,
                 validationErrors,
@@ -134,10 +148,10 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
             }
             
             const capacityPattern = /Cap[.:]?\s*([\w\s.-]+)/i;
-            const certPattern = /(IPEM|RBC)/i;
+            const certPattern = /(IPEM|RBC)/gi;
 
             const capacityMatch = description.match(capacityPattern);
-            const certMatch = description.match(certPattern);
+            const certMatches = description.match(certPattern);
 
             const finalDescription = description.replace(capacityPattern, '').replace(/-\s*$/, '').trim();
 
@@ -145,7 +159,7 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({ onImportComplete, 
               product_description: finalDescription,
               quantity: quantity,
               capacity: capacityMatch ? capacityMatch[1].trim() : null,
-              certificate_type: certMatch ? (certMatch[1].toUpperCase() as 'IPEM' | 'RBC') : null,
+              certificate_type: certMatches ? certMatches.join(' e ') : null,
             };
             currentOrder.items.push(item);
         }

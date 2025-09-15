@@ -1,4 +1,4 @@
-import { Home, Bell, LogOut, FileCheck, FlaskConical } from 'lucide-react';
+import { Home, LogOut, FileCheck, FlaskConical } from 'lucide-react';
 import { Button } from './ui/button';
 import { ReminderBell } from './ReminderBell';
 import { useNavigate } from 'react-router-dom';

@@ -12,7 +12,7 @@ export interface OrderItem {
   product_description: string;
   quantity?: number | null;
   capacity?: string | null;
-  certificate_type?: 'IPEM' | 'RBC' | null;
+  certificate_type?: string | null;
   created_at: string;
 }
 

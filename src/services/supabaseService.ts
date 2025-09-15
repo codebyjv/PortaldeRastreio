@@ -286,7 +286,7 @@ export const SupabaseService = {
     let query = supabase
       .from('order_items')
       .select('*, orders(*)')
-      .eq('certificate_type', 'IPEM');
+      .ilike('certificate_type', '%IPEM%');
 
     if (assessedItemIds.length > 0) {
       query = query.not('id', 'in', `(${assessedItemIds.join(',')})`);
@@ -306,7 +306,7 @@ export const SupabaseService = {
     const { data, error } = await supabase
       .from('order_items')
       .select('*, orders(*)')
-      .eq('certificate_type', 'RBC')
+      .ilike('certificate_type', '%RBC%')
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -341,16 +341,16 @@ export const SupabaseService = {
       .from('order_items')
       .update({ 
         proposal_approved: false,
-        proposal_approved_date: new Date().toISOString() 
+        proposal_approved_date: null
       })
       .in('id', itemIds);
 
     if (error) {
-      throw new Error(`Erro ao rejeitar proposta RBC: ${error.message}`);
+      throw new Error(`Erro ao reverter proposta RBC: ${error.message}`);
     }
     const { data: item } = await supabase.from('order_items').select('order_id').in('id', itemIds).limit(1).single();
     if (item) {
-      await _logAction(`Proposta RBC para ${itemIds.length} itens rejeitada.`, item.order_id);
+      await _logAction(`Reversão da proposta RBC para ${itemIds.length} itens.`, item.order_id);
     }
   },
 
@@ -393,7 +393,7 @@ export const SupabaseService = {
       return [];
     }
     // A estrutura retornada é { order_items: EnrichedOrderItem }[], então precisamos achatar
-    return (data.map(item => item.order_items) as unknown) as EnrichedOrderItem[];
+    return data.map(item => (item.order_items as unknown) as EnrichedOrderItem);
   },
 
   async removeItemFromAssessment(assessmentId: number, itemId: number): Promise<void> {

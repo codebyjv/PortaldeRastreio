@@ -121,6 +121,7 @@ export const RbcDashboard = () => {
                     <TableHead>Pedido</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Itens</TableHead>
+                    <TableHead>Quantidade</TableHead>
                     <TableHead>Data do Pedido</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -139,6 +140,13 @@ export const RbcDashboard = () => {
                               {item.product_description}
                               {item.capacity && ` Cap.: ${item.capacity}`}
                             </li>
+                          ))}
+                        </ul>
+                      </TableCell>
+                      <TableCell>
+                        <ul className="list-none">
+                          {order.items.map(item => (
+                            <li key={item.id}>{item.quantity}</li>
                           ))}
                         </ul>
                       </TableCell>
@@ -165,6 +173,7 @@ export const RbcDashboard = () => {
                     <TableHead>Pedido</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Itens</TableHead>
+                    <TableHead>Quantidade</TableHead>
                     <TableHead>Data da Aprovação</TableHead>
                     <TableHead className="w-[50px]">Ações</TableHead>
                   </TableRow>
@@ -181,6 +190,13 @@ export const RbcDashboard = () => {
                               {item.product_description}
                               {item.capacity && ` Cap.: ${item.capacity}`}
                             </li>
+                          ))}
+                        </ul>
+                      </TableCell>
+                      <TableCell>
+                        <ul className="list-none">
+                          {order.items.map(item => (
+                            <li key={item.id}>{item.quantity}</li>
                           ))}
                         </ul>
                       </TableCell>
