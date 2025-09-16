@@ -37,9 +37,10 @@ export const OrderInfoCard = ({ order, onUpdate }: OrderInfoCardProps) => {
     }
   };
 
-  const [customerName, cnpj] = (order.customer_name || '-').split(/\s+-\s+/);
+  const customerName = order.customer_name || '-';
+  const cnpj = order.cnpj || '-';
 
-  return (
+ return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">

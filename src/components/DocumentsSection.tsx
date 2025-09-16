@@ -10,6 +10,7 @@ import { FileUpload } from './FileUpload';
 import { ConfirmationModal } from './ConfirmationModal';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 
 interface DocumentsSectionProps {
   orderId: string;
@@ -40,6 +41,8 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
   const [loading, setLoading] = useState(true);
   const [previewDoc, setPreviewDoc] = useState<OrderDocument | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<OrderDocument | null>(null);
 
   const isAdminRoute = useIsAdminPage();
 
@@ -105,7 +108,7 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
 
     return (
       <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
-        <DialogContent className="w-full max-w-6xl h-[90vh] flex flex-col">
+        <DialogContent className="w-screen h-[90vh] flex flex-col">
           <DialogHeader><DialogTitle>{previewDoc.original_name}</DialogTitle></DialogHeader>
           <div className="flex-grow w-full flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
             {isImage ? (
@@ -151,7 +154,16 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-gray-900">{doc.original_name}</h4>
                       {onDeleteDocument && !doc.is_default && (
-                        <Button variant="ghost" size="sm" onClick={() => onDeleteDocument(doc.id)} className="text-red-600 hover:text-red-800 hover:bg-red-50" title="Excluir documento">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDoc(doc as OrderDocument);
+                            setIsModalOpen(true);
+                          }}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          title="Excluir documento"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
@@ -181,6 +193,19 @@ export function DocumentsSection({ orderId, onDeleteDocument }: DocumentsSection
         )}
         {renderPreview()}
       </CardContent>
+
+      {isModalOpen && selectedDoc && (
+        <ConfirmationModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={() => {
+            onDeleteDocument?.(selectedDoc.id);
+            setIsModalOpen(false);
+          }}
+          title="Confirmação"
+          description={`Tem certeza de que deseja excluir o documento ${selectedDoc.original_name}?`}
+        />
+      )}
     </Card>
   );
 }
