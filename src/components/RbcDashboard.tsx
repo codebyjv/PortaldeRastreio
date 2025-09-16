@@ -7,7 +7,7 @@ import { Checkbox } from './ui/checkbox';
 import { Button } from './ui/button';
 import { Layout } from './Layout';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { BellRing, Undo2 } from 'lucide-react';
+import { BellRing, Undo2, Send } from 'lucide-react';
 
 // Função para calcular a diferença em dias úteis
 const getBusinessDaysDifference = (startDate: Date, endDate: Date) => {
@@ -88,6 +88,16 @@ export const RbcDashboard = () => {
     } catch (error) {
       console.error('Erro ao reverter proposta:', error);
       alert('Não foi possível reverter a proposta.');
+    }
+  };
+
+  const handleSendProposal = async (itemIds: number[]) => {
+    try {
+      await SupabaseService.sendRbcProposal(itemIds);
+      fetchData(); // Recarrega os dados
+    } catch (error) {
+      console.error('Erro ao enviar proposta:', error);
+      alert('Não foi possível enviar a proposta.');
     }
   };
 

@@ -110,9 +110,7 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onUpdate, onC
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
         title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir o pedido ${order.order_number}? Esta ação não pode ser desfeita.`}
-        confirmText="Excluir"
-        cancelText="Cancelar"
+        description={`Tem certeza que deseja excluir o pedido ${order.order_number}? Esta ação não pode ser desfeita.`}
       />
     </div>
   );

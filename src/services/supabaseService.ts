@@ -354,6 +354,23 @@ export const SupabaseService = {
     }
   },
 
+  async sendRbcProposal(itemIds: number[]): Promise<void> {
+    const { error } = await supabase
+      .from('order_items')
+      .update({ 
+        proposal_sent_date: new Date().toISOString()
+      })
+      .in('id', itemIds);
+
+    if (error) {
+      throw new Error(`Erro ao enviar proposta RBC: ${error.message}`);
+    }
+    const { data: item } = await supabase.from('order_items').select('order_id').in('id', itemIds).limit(1).single();
+    if (item) {
+      await _logAction(`Proposta RBC para ${itemIds.length} itens enviada.`, item.order_id);
+    }
+  },
+
   async getIpemAssessments(): Promise<IpemAssessment[]> {
     const { data, error } = await supabase
       .from('ipem_assessments')

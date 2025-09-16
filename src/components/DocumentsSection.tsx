@@ -7,7 +7,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { useIsAdminPage } from '../hooks/useIsAdminRoute';
 import { useState, useEffect, useCallback } from 'react';
 import { FileUpload } from './FileUpload';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
+import { ConfirmationModal } from './ConfirmationModal';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 
