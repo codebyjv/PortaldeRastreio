@@ -8,20 +8,7 @@ import { Button } from './ui/button';
 import { Layout } from './Layout';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { BellRing, Undo2, Send } from 'lucide-react';
-
-// Função para calcular a diferença em dias úteis
-const getBusinessDaysDifference = (startDate: Date, endDate: Date) => {
-  let count = 0;
-  const curDate = new Date(startDate.getTime());
-  while (curDate <= endDate) {
-    const dayOfWeek = curDate.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-    curDate.setDate(curDate.getDate() + 1);
-  }
-  return count - 1;
-};
+import { getBusinessDaysDifference } from '../utils/date-helper'; // Import the shared utility
 
 // Agrupa itens por pedido
 const groupItemsByOrder = (items: EnrichedOrderItem[]) => {
@@ -133,6 +120,7 @@ export const RbcDashboard = () => {
                     <TableHead>Itens</TableHead>
                     <TableHead>Quantidade</TableHead>
                     <TableHead>Data do Pedido</TableHead>
+                    <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -161,6 +149,12 @@ export const RbcDashboard = () => {
                         </ul>
                       </TableCell>
                       <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" onClick={() => handleSendProposal(order.items.map(i => i.id))}>
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -65,14 +65,15 @@ export const SupabaseService = {
     return newOrder;
   },
 
-  async getOrders(): Promise<Order[]> {
-    const { data, error } = await supabase
+  async getOrders(page = 1, pageSize = 10): Promise<{ orders: Order[], count: number }> {
+    const { data, error, count } = await supabase
       .from('orders')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
+      .range((page - 1) * pageSize, page * pageSize - 1);
 
     if (error) throw new Error(`Erro ao buscar pedidos: ${error.message}`)
-    return data || []
+    return { orders: data || [], count: count || 0 };
   },
 
   async getOrdersByCNPJ(cnpj: string): Promise<Order[]> {

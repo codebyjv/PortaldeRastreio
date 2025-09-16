@@ -16,7 +16,8 @@ import { Order } from '../types/order';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { Layout } from './Layout';
-import { Badge } from './ui/badge';
+import { Badge }n from './ui/badge';
+import { Pagination } from './ui/pagination'; // Assuming you have a Pagination component
 
 const QUICK_FILTERS = ['Confirmado', 'Em transporte', 'Aguardando retirada', 'Pendente', 'Entregue', 'Cancelado'];
 
@@ -31,6 +32,8 @@ export const AdminDashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showImporter, setShowImporter] = useState(false);
+  const [page, setPage] = useState(1); // New state for current page
+  const [totalOrders, setTotalOrders] = useState(0); // New state for total orders
   const navigate = useNavigate();
 
   // Lógica de autenticação simplificada
@@ -46,8 +49,8 @@ export const AdminDashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    loadOrders(page); // Call loadOrders with the current page
+  }, [page]); // Re-run when page changes
 
   useEffect(() => {
     // Lógica de filtragem unificada
@@ -64,10 +67,11 @@ export const AdminDashboard = () => {
     setFilteredOrders(filtered);
   }, [searchTerm, orders, statusFilter]);
 
-  const loadOrders = async () => {
+  const loadOrders = async (currentPage: number) => { // Accept currentPage parameter
     try {
-      const ordersData = await SupabaseService.getOrders();
+      const { orders: ordersData, count } = await SupabaseService.getOrders(currentPage);
       setOrders(ordersData);
+      setTotalOrders(count); // Set total orders
       if (selectedOrder) {
         const updatedSelectedOrder = ordersData.find(o => o.id === selectedOrder.id);
         if (updatedSelectedOrder) {
@@ -86,7 +90,7 @@ export const AdminDashboard = () => {
   const handleCreateOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'expirationDate'>) => {
     try {
       await SupabaseService.createOrder(orderData);
-      await loadOrders();
+      await loadOrders(1); // Reload first page after creation
       setShowForm(false);
       alert('Pedido criado com sucesso!');
     } catch (error) {
@@ -102,8 +106,6 @@ export const AdminDashboard = () => {
   const clearSearch = () => {
     setSearchTerm('');
   };
-
-  
 
   if (loading) {
     return (
@@ -130,7 +132,7 @@ export const AdminDashboard = () => {
             <Button onClick={() => setShowImporter(true)} variant="outline"><Upload className="w-4 h-4 mr-2" />Importar</Button>
             {showImporter && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <ExcelImporter onImportComplete={() => { setShowImporter(false); loadOrders(); }} onCancel={() => setShowImporter(false)} />
+                <ExcelImporter onImportComplete={() => { setShowImporter(false); loadOrders(1); }} onCancel={() => setShowImporter(false)} /> {/* Reload first page after import */}
               </div>
             )}
             <Button onClick={() => setShowForm(!showForm)}>{showForm ? <X className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}{showForm ? 'Fechar' : 'Novo Pedido'}</Button>
@@ -171,9 +173,15 @@ export const AdminDashboard = () => {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <div>
                 <div className="bg-white rounded-lg border"><OrderList orders={filteredOrders} onSelectOrder={setSelectedOrder} selectedOrderId={selectedOrder?.id} /></div>
+                {/* Pagination component */}
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.ceil(totalOrders / 10)} // Assuming 10 items per page
+                  onPageChange={setPage}
+                />
               </div>
               <div>
-                {selectedOrder ? <OrderDetails order={selectedOrder} onUpdate={loadOrders} onClose={() => setSelectedOrder(null)} /> : (
+                {selectedOrder ? <OrderDetails order={selectedOrder} onUpdate={() => loadOrders(page)} onClose={() => setSelectedOrder(null)} /> : ( // Pass current page to onUpdate
                   <div className="bg-white rounded-lg border p-8 text-center h-full flex flex-col justify-center">
                     <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
                     <h3 className="font-semibold text-gray-700">Selecione um pedido</h3>
