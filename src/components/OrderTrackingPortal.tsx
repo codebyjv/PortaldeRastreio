@@ -162,11 +162,15 @@ export function OrderTrackingPortal() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
-              <Package className="w-12 h-12 text-red-600 mr-3" />
-              <h1 className="text-3xl font-bold text-gray-900">Portal de Rastreamento</h1>
+              <img
+                src="https://res.cloudinary.com/ditwnysdl/image/upload/v1742989047/ff0nv3sruwxndjos7fhz.png"
+                alt="Logo do Portal"
+                className="w-12 h-12 mr-3 object-contain"
+              />
+              <h1 className="text-3xl font-bold text-gray-900">Portal de Rastreio - WL Pesos Padrão</h1>
             </div>
             <p className="text-lg text-gray-600">
-              Acompanhe o status dos seus pedidos e acesse documentos
+              Acompanhe o status dos seus pedidos e acesse documentos (NF-e, Boletos, Certificados, etc)
             </p>
 
             {/* Botão de Configurações */}
@@ -196,7 +200,7 @@ export function OrderTrackingPortal() {
                 Buscar Pedido
               </CardTitle>
               <CardDescription>
-                Digite o CNPJ de faturamento para consultar o status do seu pedido
+                Digite o CNPJ conforme o aprovado pela proposta comercial enviada e aprovada.
               </CardDescription>
             </CardHeader>
             <CardContent>
