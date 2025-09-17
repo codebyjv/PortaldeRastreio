@@ -16,8 +16,14 @@ import { Order } from '../types/order';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { Layout } from './Layout';
-import { Badge }n from './ui/badge';
-import { Pagination } from './ui/pagination'; // Assuming you have a Pagination component
+import { Badge } from './ui/badge';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from "./ui/pagination";
 
 const QUICK_FILTERS = ['Confirmado', 'Em transporte', 'Aguardando retirada', 'Pendente', 'Entregue', 'Cancelado'];
 
@@ -174,11 +180,41 @@ export const AdminDashboard = () => {
               <div>
                 <div className="bg-white rounded-lg border"><OrderList orders={filteredOrders} onSelectOrder={setSelectedOrder} selectedOrderId={selectedOrder?.id} /></div>
                 {/* Pagination component */}
-                <Pagination
-                  currentPage={page}
-                  totalPages={Math.ceil(totalOrders / 10)} // Assuming 10 items per page
-                  onPageChange={setPage}
-                />
+                <div className="flex items-center justify-center space-x-2 mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page > 1) {
+                              setPage(page - 1);
+                            }
+                          }}
+                          className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="text-sm font-medium p-2">
+                          Página {page} de {Math.ceil(totalOrders / 10) || 1}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (page < Math.ceil(totalOrders / 10)) {
+                              setPage(page + 1);
+                            }
+                          }}
+                          className={page >= Math.ceil(totalOrders / 10) ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
               </div>
               <div>
                 {selectedOrder ? <OrderDetails order={selectedOrder} onUpdate={() => loadOrders(page)} onClose={() => setSelectedOrder(null)} /> : ( // Pass current page to onUpdate
